@@ -30,7 +30,6 @@
             z-index: +1;
         }
 
-        /* Giriş alanları ve gönderme butonu */
         .input-container {
             position: relative;
         }
@@ -83,7 +82,6 @@
             cursor: pointer;
         }
 
-        /* Üye olma alanı */
         .signup-link {
             color: #c0c0c0;
             font-size: 0.875rem;
@@ -101,7 +99,6 @@
             text-decoration: underline;
         }
 
-        /* Başlık alanı */
         .form-title {
             font-size: 1.25rem;
             line-height: 1.75rem;
@@ -133,7 +130,6 @@
             text-shadow: 0px 0px 16px #CECECE;
         }
 
-        /* Yıldızlar animasyonu */
         .bg-stars {
             position: absolute;
             top: 0;
@@ -230,12 +226,11 @@
 </head>
 <body>
 
-    <form class="form" onsubmit="handleLogin(event)">
-        <div class="form-title"><span>alanınıza giriş yapın</span></div>
+    <form class="form" id="authForm">
+        <div class="form-title"><span>Alanınıza giriş yapın</span></div>
         <div class="title-2"><span>ALAN</span></div>
         <div class="input-container">
-            <input class="input-user" type="text" placeholder="Kullanıcı Adı Girin" required>
-            <span></span>
+            <input class="input-user" type="text" id="username" placeholder="Kullanıcı Adı Girin" required>
         </div>
 
         <section class="bg-stars">
@@ -246,39 +241,66 @@
         </section>
 
         <div class="input-container">
-            <input class="input-pwd" type="password" placeholder="Şifre Girin" required>
+            <input class="input-pwd" type="password" id="password" placeholder="Şifre Girin" required>
         </div>
         <button type="submit" class="submit">
             <span class="sign-text">Giriş Yap</span>
         </button>
 
         <p class="signup-link">
-            Hesabınız yok mu?
-            <a href="#" class="up" onclick="handleSignUp()">Kayıt Ol!</a>
+            Hesabınız yok mu? <a href="#" class="up" onclick="toggleForm()">Kayıt Ol!</a>
         </p>
+        <p class="error" id="errorMessage" style="display: none; color: red;"></p>
     </form>
 
     <script>
-        // Giriş yapma işlemi
-        function handleLogin(event) {
-            event.preventDefault(); // Formun varsayılan davranışını engelle
+        let isLogin = true; // Başlangıçta giriş formu gösteriliyor
 
-            const username = document.querySelector('.input-user').value;
-            const password = document.querySelector('.input-pwd').value;
+        // Formu giriş ve kayıt arası geçiş için işlev
+        function toggleForm() {
+            isLogin = !isLogin;
+            const formTitle = document.querySelector('.form-title span');
+            const submitButton = document.querySelector('.submit');
+            const signupLink = document.querySelector('.signup-link a');
+            const errorMessage = document.getElementById('errorMessage');
 
-            if (username && password) {
-                alert("Giriş başarılı! Kullanıcı Adı: " + username);
-                // Burada bir sunucuya gönderme veya doğrulama işlemi yapılabilir
+            formTitle.textContent = isLogin ? 'Alanınıza giriş yapın' : 'Kayıt Ol';
+            submitButton.innerHTML = `<span class="sign-text">${isLogin ? 'Giriş Yap' : 'Kayıt Ol'}</span>`;
+            signupLink.textContent = isLogin ? 'Kayıt Ol!' : 'Giriş Yap!';
+            errorMessage.style.display = 'none';
+        }
+
+        // Form gönderim işlemi
+        document.getElementById('authForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+
+            if (isLogin) {
+                // Giriş yapma işlemi
+                const storedPassword = localStorage.getItem(username);
+                if (storedPassword && storedPassword === btoa(password)) {
+                    localStorage.setItem('loggedInUser', username);
+                    alert('Giriş başarılı! Ana sayfaya yönlendiriliyorsunuz.');
+                    // Ana sayfaya yönlendir
+                    window.location.href = 'index.html';
+                } else {
+                    errorMessage.textContent = 'Geçersiz kullanıcı adı veya şifre!';
+                    errorMessage.style.display = 'block';
+                }
             } else {
-                alert("Lütfen tüm alanları doldurun.");
+                // Kayıt olma işlemi
+                if (localStorage.getItem(username)) {
+                    errorMessage.textContent = 'Bu kullanıcı adı zaten alınmış!';
+                    errorMessage.style.display = 'block';
+                } else {
+                    localStorage.setItem(username, btoa(password)); // Şifreyi base64 ile şifreliyoruz (hash yerine base64 kullanılmakta)
+                    alert('Kayıt başarılı! Giriş yapabilirsiniz.');
+                    toggleForm(); // Kayıt olduktan sonra giriş formuna geçiş yap
+                }
             }
-        }
-
-        // Kayıt olma işlemi
-        function handleSignUp() {
-            alert("Kayıt olma sayfasına yönlendirileceksiniz!");
-            // Burada kayıt olma sayfasına yönlendirme yapılabilir
-        }
+        });
     </script>
 
 </body>
