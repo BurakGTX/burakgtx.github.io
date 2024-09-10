@@ -1,0 +1,61 @@
+let zamanlayici;
+let baslangicZamani;
+let simdikiZaman;
+let gecenSure = 0;
+let durduruldu = false;
+let tamEkranModu = false;
+
+function baslatDurdur() {
+    if (!durduruldu) {
+        baslangicZamani = new Date().getTime() - gecenSure;
+        zamanlayici = setInterval(guncelleZaman, 10);
+        document.getElementById("baslatDurdur").textContent = "Durdur";
+        document.getElementById("baslatDurdur").style.backgroundColor = "red";
+        durduruldu = true;
+    } else {
+        clearInterval(zamanlayici);
+        document.getElementById("baslatDurdur").textContent = "Başlat";
+        document.getElementById("baslatDurdur").style.backgroundColor = "green";
+        durduruldu = false;
+    }
+}
+
+function sifirla() {
+    clearInterval(zamanlayici);
+    gecenSure = 0;
+    document.getElementById("kronometre").textContent = "00:00:00.000";
+    document.getElementById("baslatDurdur").textContent = "Başlat";
+    document.getElementById("baslatDurdur").style.backgroundColor = "green";
+    durduruldu = false;
+}
+
+function tamEkran() {
+    if (!tamEkranModu) {
+        document.documentElement.requestFullscreen();
+        document.getElementById("tamEkran").textContent = "Normal Ekran";
+        tamEkranModu = true;
+    } else {
+        document.exitFullscreen();
+        document.getElementById("tamEkran").textContent = "Tam Ekran";
+        tamEkranModu = false;
+    }
+}
+
+function guncelleZaman() {
+    simdikiZaman = new Date().getTime();
+    gecenSure = simdikiZaman - baslangicZamani;
+    let saat = Math.floor(gecenSure / 3600000);
+    let dakika = Math.floor((gecenSure % 3600000) / 60000);
+    let saniye = Math.floor((gecenSure % 60000) / 1000);
+    let milisaniye = gecenSure % 1000;
+    if (milisaniye < 10) {
+        milisaniye = '00' + milisaniye;
+    } else if (milisaniye < 100) {
+        milisaniye = '0' + milisaniye;
+    }
+    document.getElementById("kronometre").textContent = ('0' + saat).slice(-2) + ':' + ('0' + dakika).slice(-2) + ':' + ('0' + saniye).slice(-2) + '.' + ('00' + milisaniye).slice(-3);
+}
+
+document.getElementById("baslatDurdur").addEventListener("click", baslatDurdur);
+document.getElementById("sifirla").addEventListener("click", sifirla);
+document.getElementById("tamEkran").addEventListener("click", tamEkran);
