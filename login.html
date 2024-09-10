@@ -51,7 +51,7 @@
             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         }
 
-        .input-mail:focus::placeholder {
+        .input-user:focus::placeholder {
             opacity: 0;
             transition: opacity .9s;
         }
@@ -230,11 +230,11 @@
 </head>
 <body>
 
-    <form class="form">
+    <form class="form" onsubmit="handleLogin(event)">
         <div class="form-title"><span>alanınıza giriş yapın</span></div>
         <div class="title-2"><span>ALAN</span></div>
         <div class="input-container">
-            <input class="input-mail" type="email" placeholder="E-posta girin">
+            <input class="input-user" type="text" placeholder="Kullanıcı Adı Girin" required>
             <span></span>
         </div>
 
@@ -246,7 +246,7 @@
         </section>
 
         <div class="input-container">
-            <input class="input-pwd" type="password" placeholder="Şifre girin">
+            <input class="input-pwd" type="password" placeholder="Şifre Girin" required>
         </div>
         <button type="submit" class="submit">
             <span class="sign-text">Giriş Yap</span>
@@ -254,9 +254,32 @@
 
         <p class="signup-link">
             Hesabınız yok mu?
-            <a href="" class="up">Kayıt ol!</a>
+            <a href="#" class="up" onclick="handleSignUp()">Kayıt Ol!</a>
         </p>
     </form>
+
+    <script>
+        // Giriş yapma işlemi
+        function handleLogin(event) {
+            event.preventDefault(); // Formun varsayılan davranışını engelle
+
+            const username = document.querySelector('.input-user').value;
+            const password = document.querySelector('.input-pwd').value;
+
+            if (username && password) {
+                alert("Giriş başarılı! Kullanıcı Adı: " + username);
+                // Burada bir sunucuya gönderme veya doğrulama işlemi yapılabilir
+            } else {
+                alert("Lütfen tüm alanları doldurun.");
+            }
+        }
+
+        // Kayıt olma işlemi
+        function handleSignUp() {
+            alert("Kayıt olma sayfasına yönlendirileceksiniz!");
+            // Burada kayıt olma sayfasına yönlendirme yapılabilir
+        }
+    </script>
 
 </body>
 </html>
