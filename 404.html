@@ -1,37 +1,274 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 - Page Not Found</title>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f4f4f4;
-            text-align: center;
-            padding: 50px;
-        }
-        h1 {
-            font-size: 72px;
-            color: #333;
-        }
-        p {
-            font-size: 18px;
-            color: #666;
-        }
-        a {
-            color: #3498db;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yanlış Site</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #000;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      color: #FFF;
+      font-family: 'Arial', sans-serif;
+    }
+
+    .error-message {
+      position: absolute;
+      top: 10%;
+      width: 100%;
+      text-align: center;
+      z-index: 15;
+      font-size: 48px;
+      font-weight: bold;
+    }
+
+    @keyframes snow {
+      0% {
+        opacity: 0;
+        transform: translateY(0px);
+      }
+      20% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(650px);
+      }
+    }
+
+    @keyframes astronaut {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .box-of-star1,
+    .box-of-star2,
+    .box-of-star3,
+    .box-of-star4 {
+      width: 100%;
+      position: absolute;
+      z-index: 10;
+      left: 0;
+      top: 0;
+      height: 100vh;
+    }
+
+    .box-of-star1 {
+      animation: snow 5s linear infinite;
+    }
+
+    .box-of-star2 {
+      animation: snow 5s -1.64s linear infinite;
+    }
+
+    .box-of-star3 {
+      animation: snow 5s -2.30s linear infinite;
+    }
+
+    .box-of-star4 {
+      animation: snow 5s -3.30s linear infinite;
+    }
+
+    .star {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background-color: #FFF;
+      position: absolute;
+      opacity: 0.7;
+    }
+
+    .star-position1 { top: 30px; left: 20px; }
+    .star-position2 { top: 110px; left: 250px; }
+    .star-position3 { top: 60px; left: 570px; }
+    .star-position4 { top: 120px; left: 900px; }
+    .star-position5 { top: 20px; left: 1120px; }
+    .star-position6 { top: 90px; left: 1280px; }
+    .star-position7 { top: 30px; left: 1480px; }
+
+    .astronaut {
+      width: 250px;
+      height: 300px;
+      position: absolute;
+      z-index: 11;
+      top: calc(50% - 150px);
+      left: calc(50% - 125px);
+      animation: astronaut 5s linear infinite;
+    }
+
+    .schoolbag {
+      width: 100px;
+      height: 150px;
+      position: absolute;
+      z-index: 1;
+      top: calc(50% - 75px);
+      left: calc(50% - 50px);
+      background-color: #94b7ca;
+      border-radius: 50px 50px 0 0 / 30px 30px 0 0;
+    }
+
+    .head {
+      width: 97px;
+      height: 80px;
+      position: absolute;
+      z-index: 3;
+      background: -webkit-linear-gradient(left, #e3e8eb 0%, #e3e8eb 50%, #fbfdfa 50%, #fbfdfa 100%);
+      border-radius: 50%;
+      top: 34px;
+      left: calc(50% - 47.5px);
+    }
+
+    .head:after {
+      content: "";
+      width: 60px;
+      height: 50px;
+      position: absolute;
+      top: calc(50% - 25px);
+      left: calc(50% - 30px);
+      background: -webkit-linear-gradient(top, #15aece 0%, #15aece 50%, #0391bf 50%, #0391bf 100%);
+      border-radius: 15px;
+    }
+
+    .body {
+      width: 85px;
+      height: 100px;
+      position: absolute;
+      z-index: 2;
+      background-color: #fffbff;
+      border-radius: 40px / 20px;
+      top: 105px;
+      left: calc(50% - 41px);
+      background: -webkit-linear-gradient(left, #e3e8eb 0%, #e3e8eb 50%, #fbfdfa 50%, #fbfdfa 100%);
+    }
+
+    .panel {
+      width: 60px;
+      height: 40px;
+      position: absolute;
+      top: 20px;
+      left: calc(50% - 30px);
+      background-color: #b7cceb;
+    }
+
+    .panel:before {
+      content: "";
+      width: 30px;
+      height: 5px;
+      position: absolute;
+      top: 9px;
+      left: 7px;
+      background-color: #fbfdfa;
+      box-shadow: 0px 9px 0px #fbfdfa, 0px 18px 0px #fbfdfa;
+    }
+
+    .arm {
+      width: 80px;
+      height: 30px;
+      position: absolute;
+      top: 121px;
+      z-index: 2;
+    }
+
+    .arm-left {
+      left: 30px;
+      background-color: #e3e8eb;
+      border-radius: 0 0 0 39px;
+    }
+
+    .arm-right {
+      right: 30px;
+      background-color: #fbfdfa;
+      border-radius: 0 0 39px 0;
+    }
+
+    .leg {
+      width: 30px;
+      height: 40px;
+      position: absolute;
+      z-index: 2;
+      bottom: 70px;
+    }
+
+    .leg-left {
+      left: 76px;
+      background-color: #e3e8eb;
+      transform: rotate(20deg);
+    }
+
+    .leg-right {
+      right: 73px;
+      background-color: #fbfdfa;
+      transform: rotate(-20deg);
+    }
+  </style>
 </head>
 <body>
-    <h1>404</h1>
-    <p>Oops! The page you are looking for does not exist.</p>
-    <p><a href="/">Go back to the homepage</a></p>
+
+  <div class="error-message">Yanlış Site</div>
+
+  <div class="box-of-star1">
+    <div class="star star-position1"></div>
+    <div class="star star-position2"></div>
+    <div class="star star-position3"></div>
+    <div class="star star-position4"></div>
+    <div class="star star-position5"></div>
+    <div class="star star-position6"></div>
+    <div class="star star-position7"></div>
+  </div>
+  <div class="box-of-star2">
+    <div class="star star-position1"></div>
+    <div class="star star-position2"></div>
+    <div class="star star-position3"></div>
+    <div class="star star-position4"></div>
+    <div class="star star-position5"></div>
+    <div class="star star-position6"></div>
+    <div class="star star-position7"></div>
+  </div>
+  <div class="box-of-star3">
+    <div class="star star-position1"></div>
+    <div class="star star-position2"></div>
+    <div class="star star-position3"></div>
+    <div class="star star-position4"></div>
+    <div class="star star-position5"></div>
+    <div class="star star-position6"></div>
+    <div class="star star-position7"></div>
+  </div>
+  <div class="box-of-star4">
+    <div class="star star-position1"></div>
+    <div class="star star-position2"></div>
+    <div class="star star-position3"></div>
+    <div class="star star-position4"></div>
+    <div class="star star-position5"></div>
+    <div class="star star-position6"></div>
+    <div class="star star-position7"></div>
+  </div>
+
+  <div class="astronaut">
+    <div class="head"></div>
+    <div class="arm arm-left"></div>
+    <div class="arm arm-right"></div>
+    <div class="body">
+      <div class="panel"></div>
+    </div>
+    <div class="leg leg-left"></div>
+    <div class="leg leg-right"></div>
+    <div class="schoolbag"></div>
+  </div>
+
 </body>
 </html>
