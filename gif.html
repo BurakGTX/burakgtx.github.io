@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIF Yükleme</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #gifPreview {
+            margin-top: 20px;
+        }
+        img {
+            max-width: 300px;
+            max-height: 300px;
+            display: none; /* Başlangıçta gizle */
+        }
+    </style>
+</head>
+<body>
+    <h1>GIF Yükle</h1>
+    <form id="uploadForm">
+        <input type="file" id="fileInput" accept="image/gif" required>
+        <button type="submit">Yükle</button>
+    </form>
+    <p id="urlOutput"></p>
+    <div id="gifPreview">
+        <h3>Önizleme:</h3>
+        <img id="gifImage" alt="Yüklenen GIF">
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (file) {
+                // GIF yüklendikten sonra URL'yi çıkar
+                const url = URL.createObjectURL(file);
+                document.getElementById('urlOutput').innerText = `GIF URL'si: ${url}`;
+
+                // GIF önizlemesi için resim kaynağını ayarla
+                const gifImage = document.getElementById('gifImage');
+                gifImage.src = url;
+                gifImage.style.display = 'block'; // Önizlemeyi göster
+            } else {
+                document.getElementById('urlOutput').innerText = 'Lütfen bir GIF dosyası seçin.';
+            }
+        });
+    </script>
+</body>
+</html>
