@@ -78,6 +78,13 @@
         .badges {
             margin-top: 10px;
             font-size: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .badges img {
+            width: 20px;
+            height: 20px;
         }
         /* RGB Animasyonu için stil */
         .title {
@@ -132,7 +139,9 @@
                     <img src="${userData.avatarUrl}" alt="${userData.username}'s Avatar">
                     <h2>${userData.username}</h2>
                     <p class="durum">Durum: ${userData.durum}</p>
-                    <div class="badges">Badges: ${userData.badges.join(', ') || 'Yok'}</div>
+                    <p class="durum">Bot: ${userData.botmu ? 'Bot' : 'Bot Değil'}</p>
+                    <p class="durum">Oluşturma Tarihi: ${new Date(userData.olusturma_tarihi).toLocaleString('tr-TR')}</p>
+                    <div class="badges">Badges: ${userData.badges.map(badge => `<img src="https://cdn.discordapp.com/badges/${badge}.png" alt="${badge} Badge">`).join(' ') || 'Yok'}</div>
                 `;
             } catch (error) {
                 sonucDiv.innerHTML = `<p style="color: red;">Hata: ${error.message}</p>`;
