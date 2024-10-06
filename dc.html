@@ -77,14 +77,7 @@
         }
         .badges {
             margin-top: 10px;
-            font-size: 12px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-        }
-        .badges img {
-            width: 20px;
-            height: 20px;
+            font-size: 14px;
         }
         /* RGB Animasyonu için stil */
         .title {
@@ -141,10 +134,10 @@
                     <p class="durum">Durum: ${userData.durum}</p>
                     <p class="durum">Bot: ${userData.botmu ? 'Bot' : 'Bot Değil'}</p>
                     <p class="durum">Oluşturma Tarihi: ${new Date(userData.olusturma_tarihi).toLocaleString('tr-TR')}</p>
-                    <div class="badges">Badges: ${userData.badges.map(badge => `<img src="https://cdn.discordapp.com/badges/${badge}.png" alt="${badge} Badge">`).join(' ') || 'Yok'}</div>
+                    <div class="badges">Badges: ${userData.badges && userData.badges.length > 0 ? userData.badges.join(', ') : 'Bulunamadı'}</div>
                 `;
             } catch (error) {
-                sonucDiv.innerHTML = `<p style="color: red;">Hata: ${error.message}</p>`;
+                sonucDiv.innerHTML = `<p style="color: red;">Hata: Bulunamadı</p>`;
             }
         });
     </script>
