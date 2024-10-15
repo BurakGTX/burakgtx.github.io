@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python IDLE Taklidi</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fira Code', monospace;
+            background-color: #282c34;
+            color: #abb2bf;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #61afef;
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100% - 60px);
+            padding: 10px;
+        }
+        .CodeMirror {
+            height: 50%;
+            background-color: #282c34;
+            color: #abb2bf;
+            border: 1px solid #3e4451;
+        }
+        button {
+            background-color: #61afef;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #4a8db8;
+        }
+        pre {
+            background-color: #1e2127;
+            color: #abb2bf;
+            padding: 10px;
+            border-radius: 5px;
+            height: 40%;
+            overflow: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Python IDLE Taklidi - Modern Arayüz</h1>
+    </header>
+    <div class="editor-container">
+        <textarea id="code" placeholder="Python kodunuzu buraya yazın..."></textarea>
+        <button onclick="runCode()">Çalıştır</button>
+        <h2>Çıktı:</h2>
+        <pre id="output"></pre>
+    </div>
+
+    <!-- Pyodide'i yüklemek için doğru URL ile kütüphane eklendi -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.23.0/full/pyodide.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/python/python.min.js"></script>
+    
+    <script>
+        // Pyodide'i başlatırken indexURL parametresiyle yükle
+        async function loadPyodideAndPackages() {
+            let pyodide = await loadPyodide({
+                indexURL : "https://cdn.jsdelivr.net/pyodide/v0.23.0/full/"
+            });
+            return pyodide;
+        }
+
+        // Pyodide yükleme ve Python kodu çalıştırma
+        let pyodideReadyPromise = loadPyodideAndPackages();
+
+        // CodeMirror kullanarak Python editörü oluştur
+        const editor = CodeMirror.fromTextArea(document.getElementById('code'), {
+            mode: 'python',
+            lineNumbers: true,
+            theme: 'material-darker',
+            autoCloseBrackets: true, // Parantezleri otomatik kapatma
+            matchBrackets: true, // Eşleşen parantezleri göster
+            indentUnit: 4, // 4 boşluk ile girinti
+            tabSize: 4
+        });
+
+        async function runCode() {
+            const code = editor.getValue(); // CodeMirror'dan kodu al
+            const outputElement = document.getElementById('output');
+            outputElement.textContent = 'Kod çalıştırılıyor...';
+
+            try {
+                let pyodide = await pyodideReadyPromise;
+                let result = await pyodide.runPythonAsync(code); // Python kodunu çalıştır
+                outputElement.textContent = result || 'Çıktı yok'; // Sonucu göster
+            } catch (err) {
+                outputElement.textContent = 'Hata: ' + err.message; // Hata mesajı göster
+            }
+        }
+    </script>
+</body>
+</html>
