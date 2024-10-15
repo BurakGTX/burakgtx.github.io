@@ -103,7 +103,16 @@
 
             try {
                 let pyodide = await pyodideReadyPromise;
+                
+                // Pyodide'in çıktıyı yakalaması için standard output'u yönlendir
+                pyodide.runPython(`
+                    import sys
+                    from js import console
+                    sys.stdout.write = console.log
+                `);
+
                 let result = await pyodide.runPythonAsync(code); // Python kodunu çalıştır
+                
                 outputElement.textContent = result || 'Çıktı yok'; // Sonucu göster
             } catch (err) {
                 outputElement.textContent = 'Hata: ' + err.message; // Hata mesajı göster
