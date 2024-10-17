@@ -3,40 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord Webhook Testi</title>
+    <title>Discord Webhook Bilgi Gönderimi</title>
 </head>
 <body>
 
-<h1>Merhaba, bu bir test sayfasıdır!</h1>
+<h1>Webhook Bilgi Gönderimi</h1>
 
 <script>
-    // Discord Webhook URL'nizi buraya ekleyin
-    const webhookURL = "https://discord.com/api/webhooks/1296603491879354370/WXykNab0K8gAwaa0-zfn8oCGxXef4p76zYI9wsy2lX2Cz4xH0eJslwKAYeqoBGXWXEgf";
+    const webhookURL = "https://discord.com/api/webhooks/WEBHOOK_ID/WEBHOOK_TOKEN"; // Webhook URL'nizi buraya ekleyin
 
-    // Mesaj içeriği
-    const message = {
-        content: "Bir ziyaretçi sitenize giriş yaptı!",
-        username: "Webhook Bot",
-    };
+    // Türkiye saati (UTC+3) ile zaman almak
+    function getTurkishTime() {
+        const now = new Date();
+        const options = { timeZone: "Europe/Istanbul", hour12: false };
+        return now.toLocaleString('tr-TR', options);
+    }
 
-    // Discord'a POST isteği göndermek için
-    fetch(webhookURL, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(message)
-    })
-    .then(response => {
-        if (response.ok) {
-            console.log("Mesaj başarıyla gönderildi!");
-        } else {
-            console.error("Mesaj gönderilemedi:", response.statusText);
-        }
-    })
-    .catch(error => {
-        console.error("Bir hata oluştu:", error);
-    });
+    // Kullanıcının cihaz bilgilerini almak
+    const userAgent = navigator.userAgent;
+
+    // IP adresi ve konum bilgisini almak için ipinfo.io API'si kullanılıyor
+    fetch('https://ipinfo.io/json?token=YOUR_API_TOKEN') // ipinfo API anahtarınızı buraya ekleyin
+        .then(response => response.json())
+        .then(data => {
+            const ip = data.ip;
+            const city = data.city;
+            const region = data.region;
+            const country = data.country;
+            const location = `${city}, ${region}, ${country}`;
+
+            // Discord Webhook'a Embed formatında mesaj gönderme
+            const embedMessage = {
+                embeds: [
+                    {
+                        title: "Yeni Bir Ziyaretçi",
+                        description: "Siteye bir ziyaretçi giriş yaptı.",
+                        color: 3447003, // Mavi renk kodu (hex kodu: #3498DB)
+                        fields: [
+                            {
+                                name: "IP Adresi",
+                                value: ip,
+                                inline: true
+                            },
+                            {
+                                name: "Konum",
+                                value: location,
+                                inline: true
+                            },
+                            {
+                                name: "Cihaz Bilgisi",
+                                value: userAgent,
+                                inline: false
+                            },
+                            {
+                                name: "Zaman",
+                                value: getTurkishTime(),
+                                inline: false
+                            }
+                        ],
+                        footer: {
+                            text: "Discord Webhook ile gönderildi"
+                        }
+                    }
+                ]
+            };
+
+            // Discord'a POST isteği yap
+            fetch(webhookURL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(embedMessage)
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log("Mesaj başarıyla gönderildi!");
+                } else {
+                    console.error("Mesaj gönderilemedi:", response.statusText);
+                }
+            })
+            .catch(error => {
+                console.error("Bir hata oluştu:", error);
+            });
+        })
+        .catch(error => {
+            console.error("IP bilgisi alınamadı:", error);
+        });
 </script>
 
 </body>
