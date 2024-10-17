@@ -22,9 +22,14 @@
     // Kullanıcının cihaz bilgilerini almak
     const userAgent = navigator.userAgent;
 
-    // IP adresini almak için ipinfo.io API'si kullanılıyor (token gerekmeden)
-    fetch('https://ipinfo.io/json')
-        .then(response => response.json())
+    // IP adresini almak için ipinfo.io API'si kullanılıyor (CORS proxy ile)
+    fetch('https://cors-anywhere.herokuapp.com/https://ipinfo.io/json')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Ağ hatası: " + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
             const ip = data.ip;
             const city = data.city;
