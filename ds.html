@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Webhook Testi</title>
+</head>
+<body>
+
+<h1>Merhaba, bu bir test sayfasıdır!</h1>
+
+<script>
+    // Discord Webhook URL'nizi buraya ekleyin
+    const webhookURL = "https://discord.com/api/webhooks/1296603491879354370/WXykNab0K8gAwaa0-zfn8oCGxXef4p76zYI9wsy2lX2Cz4xH0eJslwKAYeqoBGXWXEgf";
+
+    // Mesaj içeriği
+    const message = {
+        content: "Bir ziyaretçi sitenize giriş yaptı!",
+        username: "Webhook Bot",
+    };
+
+    // Discord'a POST isteği göndermek için
+    fetch(webhookURL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(message)
+    })
+    .then(response => {
+        if (response.ok) {
+            console.log("Mesaj başarıyla gönderildi!");
+        } else {
+            console.error("Mesaj gönderilemedi:", response.statusText);
+        }
+    })
+    .catch(error => {
+        console.error("Bir hata oluştu:", error);
+    });
+</script>
+
+</body>
+</html>
