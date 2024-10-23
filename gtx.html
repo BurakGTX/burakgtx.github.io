@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video ile Ses Çalma</title>
+</head>
+<body>
+    <button id="playButton">Ses Çal</button>
+    <video id="video" src="https://www.w3schools.com/html/mov_bbb.mp4" preload="auto" style="display: none;"></video>
+
+    <script>
+        const playButton = document.getElementById('playButton');
+        const video = document.getElementById('video');
+
+        playButton.addEventListener('click', () => {
+            // Web Audio API oluştur
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const panNode = audioContext.createStereoPanner();
+            const source = audioContext.createMediaElementSource(video);
+            
+            // Sesi sağdan sola hareket ettir
+            panNode.pan.value = -1; // Başlangıçta soldan çal
+            source.connect(panNode).connect(audioContext.destination);
+
+            // Videoyu oynat
+            video.currentTime = 0; // Videonun başından çalsın
+            video.play();
+
+            // Pan değerini animasyonla sağa hareket ettir
+            let panValue = -1;
+            const panAnimation = setInterval(() => {
+                if (panValue < 1) {
+                    panValue += 0.1; // Sağ tarafa doğru hareket
+                    panNode.pan.value = Math.min(panValue, 1); // 1'den büyük olmasın
+                } else {
+                    clearInterval(panAnimation); // Animasyonu durdur
+                }
+            }, 100); // 100ms aralıklarla güncelle
+        });
+    </script>
+</body>
+</html>
