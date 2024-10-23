@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Simülasyonu</title>
+    <style>
+        body {
+            background-color: black;
+            color: lime;
+            font-family: monospace;
+            padding: 20px;
+        }
+        .terminal {
+            width: 100%;
+            height: 400px;
+            background-color: #111;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-y: auto;
+        }
+        .terminal .output {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        input {
+            background-color: black;
+            color: lime;
+            border: none;
+            width: 100%;
+            font-family: monospace;
+            font-size: 16px;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal" id="terminal">
+        <div class="output" id="output">Terminale Hoşgeldiniz!\n</div>
+    </div>
+    <input type="text" id="input" placeholder="Komut giriniz..." autocomplete="off">
+
+    <script>
+        const inputField = document.getElementById('input');
+        const outputDiv = document.getElementById('output');
+        const terminalDiv = document.getElementById('terminal');
+
+        inputField.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                const command = inputField.value.trim();
+                inputField.value = ''; // Girdiyi temizle
+                processCommand(command);
+            }
+        });
+
+        function processCommand(command) {
+            outputDiv.textContent += `> ${command}\n`;
+
+            if (command.startsWith('color ')) {
+                const color = command.split(' ')[1];
+                document.body.style.color = color;
+                outputDiv.textContent += `Renk ${color} olarak değiştirildi.\n`;
+            } else if (command.startsWith('curl ')) {
+                const url = command.split(' ')[1];
+                fetchAsciiArt(url);
+            } else {
+                outputDiv.textContent += `Bilinmeyen komut: ${command}\n`;
+            }
+
+            terminalDiv.scrollTop = terminalDiv.scrollHeight;
+        }
+
+        // Fetch ile ASCII sanatı çek ve terminalde göster
+        async function fetchAsciiArt(url) {
+            try {
+                outputDiv.textContent += `Bağlantı kuruluyor: ${url}\n`;
+                const response = await fetch('https://' + url);
+                const asciiArt = await response.text();
+
+                // Sanatı terminale yavaşça yazdır
+                let index = 0;
+                const interval = setInterval(() => {
+                    outputDiv.textContent += asciiArt[index];
+                    index++;
+                    terminalDiv.scrollTop = terminalDiv.scrollHeight;
+
+                    if (index >= asciiArt.length) {
+                        clearInterval(interval);
+                        outputDiv.textContent += '\nASCII sanatı yüklendi.\n';
+                    }
+                }, 10); // Her karakteri 10 ms'de bir yazdır
+
+            } catch (error) {
+                outputDiv.textContent += `Hata: ASCII sanatına ulaşılamadı.\n`;
+            }
+        }
+    </script>
+</body>
+</html>
