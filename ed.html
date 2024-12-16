@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Hesabı ile Giriş</title>
+    <!-- Google Platform API'sini yükleyelim -->
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
+</head>
+<body>
+    <h2>Google Hesabınızla Giriş Yapın</h2>
+
+    <!-- Google Login Butonu burada yer alacak -->
+    <div id="g-signin2"></div>
+
+    <script>
+        function onSignIn(googleUser) {
+            var profile = googleUser.getBasicProfile();
+            var id_token = googleUser.getAuthResponse().id_token;
+
+            console.log("ID Token: " + id_token);
+            console.log("Kullanıcı Adı: " + profile.getName());
+            console.log("E-posta: " + profile.getEmail());
+
+            // Burada id_token'ı alarak işlemler yapabilirsin.
+            // ID Token'ı backend'e gönderebilirsin (backend yoksa bu işlem için başka bir yöntem kullanmalısın).
+        }
+
+        gapi.load('auth2', function() {
+            gapi.auth2.init({
+                client_id: '800747990571-bcuje12227drp4k54um7ecjie520g9fn.apps.googleusercontent.com'  // Buraya kendi Client ID'nı yaz.
+            }).then(function() {
+                // Google login butonunu başlat
+                gapi.signin2.render('g-signin2', {
+                    'scope': 'profile email',
+                    'width': 250,
+                    'height': 50,
+                    'longtitle': true,
+                    'theme': 'dark',
+                    'onsuccess': onSignIn
+                });
+            });
+        });
+    </script>
+</body>
+</html>
