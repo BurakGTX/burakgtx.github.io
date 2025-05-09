@@ -3,62 +3,62 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Online 2D Oyun</title>
+  <title>XOX Oyunu</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.10.0/dist/nipplejs.min.js"></script>
   <style>
     body {
       background: linear-gradient(135deg, #1E3A8A, #3B82F6);
       font-family: 'Inter', sans-serif;
     }
-    canvas {
-      border: 2px solid #1F2937;
+    .game-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      gap: 5px;
+      background-color: #1F2937;
+      padding: 10px;
       border-radius: 12px;
     }
+    .game-cell {
+      width: 100px;
+      height: 100px;
+      background: #FFFFFF;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .game-cell:hover:not(:disabled) {
+      background: #E5E7EB;
+    }
+    .game-cell:disabled {
+      cursor: not-allowed;
+    }
     #chatMessages {
-      max-height: 400px;
+      max-height: 300px;
       overflow-y: auto;
       scrollbar-width: thin;
-    }
-    .status-indicator {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-    .status-active {
-      background-color: #10B981;
-    }
-    .status-inactive {
-      background-color: #EF4444;
     }
     .message-bubble {
       padding: 8px 12px;
       margin: 4px;
       border-radius: 12px;
       max-width: 80%;
-      transition: all 0.2s ease;
     }
     .message-own {
-      background-color: #3B82F6;
+      background: #3B82F6;
       color: white;
       margin-left: auto;
     }
     .message-other {
-      background-color: #E5E7EB;
+      background: #E5E7EB;
       color: black;
-    }
-    #joystickContainer {
-      position: fixed;
-      bottom: 20px;
-      left: 20px;
-      width: 100px;
-      height: 100px;
-      z-index: 50;
     }
     .modal {
       background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(5px);
       position: fixed;
       top: 0;
       left: 0;
@@ -74,13 +74,8 @@
       border-radius: 16px;
       padding: 24px;
       width: 100%;
-      max-width: 600px;
+      max-width: 500px;
       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-      transform: scale(0.95);
-      animation: modalFadeIn 0.3s ease forwards;
-    }
-    @keyframes modalFadeIn {
-      to { transform: scale(1); }
     }
     .btn {
       transition: all 0.2s ease;
@@ -99,115 +94,76 @@
     .close-btn:hover {
       color: #1F2937;
     }
-    #gameContainer {
-      display: flex;
-      gap: 20px;
-    }
-    #chatPanel {
-      width: 300px;
-      background: white;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }
-    @media (max-width: 768px) {
-      #gameContainer {
-        flex-direction: column;
+    @media (max-width: 640px) {
+      .game-grid {
+        grid-template-columns: repeat(3, 80px);
       }
-      #chatPanel {
-        width: 100%;
-        max-height: 200px;
-      }
-      #chatMessages {
-        max-height: 120px;
-      }
-      canvas {
-        width: 100%;
-        height: auto;
+      .game-cell {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
       }
       .modal-content {
         max-width: 90%;
       }
     }
-    @media (min-width: 640px) {
-      #joystickContainer { display: none; }
-    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
   <!-- Kayıt/Giriş Ekranı -->
-  <div id="authScreen" class="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-sm transform transition-all duration-300">
-    <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6 text-center animate-pulse">Online 2D Oyun</h1>
+  <div id="authScreen" class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+    <h1 class="text-2xl font-extrabold text-gray-900 mb-6 text-center">XOX Oyunu</h1>
     <div id="registerForm">
-      <input id="registerUsername" type="text" placeholder="Kullanıcı Adı" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 transition" autocomplete="off" />
-      <input id="registerEmail" type="email" placeholder="E-posta (ör: ornek@gmail.com)" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 transition" autocomplete="off" />
-      <input id="registerPassword" type="password" placeholder="Şifre (min. 8 karakter)" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 transition" autocomplete="new-password" />
+      <input id="registerUsername" type="text" placeholder="Kullanıcı Adı" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500" autocomplete="off" />
+      <input id="registerEmail" type="email" placeholder="E-posta" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500" autocomplete="off" />
+      <input id="registerPassword" type="password" placeholder="Şifre (min. 8 karakter)" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500" autocomplete="new-password" />
       <button onclick="register()" class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 btn">Kayıt Ol</button>
       <p class="text-center mt-3 text-gray-600">Hesabın var mı? <a href="#" onclick="showLogin()" class="text-blue-600 hover:underline">Giriş Yap</a></p>
     </div>
     <div id="loginForm" class="hidden">
-      <input id="loginEmail" type="email" placeholder="E-posta" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 transition" autocomplete="off" />
-      <input id="loginPassword" type="password" placeholder="Şifre" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 transition" autocomplete="new-password" />
+      <input id="loginEmail" type="email" placeholder="E-posta" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500" autocomplete="off" />
+      <input id="loginPassword" type="password" placeholder="Şifre" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500" autocomplete="new-password" />
       <button onclick="login()" class="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 btn">Giriş Yap</button>
-      <p class="text-center mt-3 text-gray-600">Şifreni mi unuttun? <a href="#" onclick="resetPassword()" class="text-blue-600 hover:underline">Şifremi Unuttum</a></p>
-      <p class="text-center mt-2 text-gray-600">Hesabın yok mu? <a href="#" onclick="showRegister()" class="text-blue-600 hover:underline">Kayıt Ol</a></p>
+      <p class="text-center mt-3 text-gray-600">Hesabın yok mu? <a href="#" onclick="showRegister()" class="text-blue-600 hover:underline">Kayıt Ol</a></p>
     </div>
-  </div>
-
-  <!-- E-posta Doğrulama Bekleme Ekranı -->
-  <div id="verificationScreen" class="hidden bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-sm transform transition-all duration-300">
-    <h1 class="text-2xl font-extrabold text-gray-900 mb-6 text-center">E-posta Doğrulama</h1>
-    <p class="text-gray-600 mb-4 text-center">Lütfen e-posta adresinize gönderilen doğrulama bağlantısına tıklayın.</p>
-    <button id="resendVerification" onclick="resendVerificationEmail()" class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 btn mb-4">Tekrar Gönder</button>
-    <button onclick="logout()" class="w-full bg-red-600 text-white p-3 rounded-lg hover:bg-red-700 btn">Çıkış Yap</button>
   </div>
 
   <!-- Ana Sayfa (Lobi) -->
   <div id="lobby" class="hidden w-full max-w-md">
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl sm:text-3xl font-extrabold text-white">Hoş Geldin, <span id="welcomeUsername"></span>!</h1>
-      <button onclick="showSettingsModal()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 btn">Ayarlar</button>
+      <h1 class="text-2xl font-extrabold text-white">Hoş Geldin, <span id="welcomeUsername"></span>!</h1>
+      <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 btn">Çıkış Yap</button>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 gap-4">
       <button onclick="showRoomsModal()" class="bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 btn">Odalar</button>
       <button onclick="showCreateRoomModal()" class="bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 btn">Oda Oluştur</button>
-      <button onclick="showInviteCodeMenu()" class="bg-purple-600 text-white p-4 rounded-lg hover:bg-purple-700 btn">Davet Kodu ile Katıl</button>
-      <button onclick="logout()" class="bg-red-600 text-white p-4 rounded-lg hover:bg-red-700 btn">Çıkış Yap</button>
-    </div>
-    <div id="inviteCodeMenu" class="hidden mt-4">
-      <input id="inviteCode" type="text" placeholder="Davet Kodu (ör: ABC123)" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-purple-500 transition" autocomplete="off" />
-      <button onclick="joinRoomByInviteCode()" class="w-full bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 btn">Odaya Katıl</button>
-    </div>
-    <div id="createdRooms" class="mt-6">
-      <h2 class="text-xl font-bold text-white mb-3">Oluşturdukların</h2>
-      <ul id="createdRoomsList" class="space-y-3"></ul>
     </div>
   </div>
 
   <!-- Oyun Ekranı -->
-  <div id="gameContainer" class="hidden w-full max-w-7xl">
+  <div id="gameContainer" class="hidden w-full max-w-4xl">
     <div class="flex justify-between items-center mb-6">
       <h2 id="currentRoom" class="text-2xl font-bold text-white"></h2>
       <div class="flex items-center space-x-4">
         <span id="playerCount" class="text-white font-semibold"></span>
-        <span class="text-white">Sunucu: <span id="serverStatus" class="status-indicator"></span></span>
       </div>
     </div>
     <div class="flex gap-4">
-      <canvas id="gameCanvas" width="1200" height="900" class="rounded-2xl shadow-2xl"></canvas>
-      <div id="chatPanel" class="w-80">
+      <div class="flex flex-col items-center">
+        <div id="gameStatus" class="text-xl font-bold text-white mb-4"></div>
+        <div id="gameBoard" class="game-grid"></div>
+        <button id="restartBtn" class="mt-4 bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 btn hidden">Yeniden Oyna</button>
+      </div>
+      <div class="w-80 bg-white rounded-lg p-4 shadow">
         <h3 class="text-xl font-semibold text-gray-900 mb-3">Sohbet</h3>
         <div id="chatMessages" class="border p-3 rounded-lg mb-3 bg-gray-50"></div>
-        <input id="chatInput" type="text" placeholder="Mesaj yaz (maks. 50 karakter)" maxlength="50" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-green-500 transition" autocomplete="off" />
+        <input id="chatInput" type="text" placeholder="Mesaj yaz (maks. 50 karakter)" maxlength="50" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-green-500" autocomplete="off" />
         <button onclick="sendMessage()" class="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 btn">Gönder</button>
       </div>
     </div>
     <div class="flex gap-4 mt-6">
-      <button onclick="copyInviteCode()" id="copyInviteBtn" class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 btn">Davet Kodunu Kopyala</button>
-      <button onclick="showOwnerSettingsModal()" id="ownerSettingsBtn" class="bg-orange-600 text-white p-3 rounded-lg hover:bg-orange-700 btn hidden">Oda Ayarları</button>
-      <button onclick="leaveRoom()" id="leaveRoomBtn" class="bg-red-600 text-white p-3 rounded-lg hover:bg-red-700 btn">Odadan Çık</button>
+      <button onclick="leaveRoom()" class="bg-red-600 text-white p-3 rounded-lg hover:bg-red-700 btn">Odadan Çık</button>
     </div>
-    <div id="joystickContainer"></div>
   </div>
 
   <!-- Odalar Modalı -->
@@ -215,7 +171,6 @@
     <div class="modal-content relative">
       <span class="close-btn" onclick="hideRoomsModal()">×</span>
       <h2 class="text-xl font-bold mb-4">Mevcut Odalar</h2>
-      <input id="roomSearch" type="text" placeholder="Oda adı ara..." class="w-full p-3 border rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 transition" autocomplete="off" oninput="filterRooms()" />
       <ul id="roomList" class="space-y-3 max-h-96 overflow-y-auto"></ul>
     </div>
   </div>
@@ -224,17 +179,7 @@
   <div id="createRoomModal" class="modal hidden">
     <div class="modal-content">
       <h2 class="text-xl font-bold mb-4">Yeni Oda Oluştur</h2>
-      <input id="modalRoomName" type="text" placeholder="Oda Adı (maks. 15 karakter)" maxlength="15" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 transition" autocomplete="off" />
-      <select id="modalRoomTheme" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 transition">
-        <option value="default">Varsayılan</option>
-        <option value="forest">Orman</option>
-        <option value="space">Uzay</option>
-      </select>
-      <label class="flex items-center mb-3">
-        <input id="modalRoomPasswordToggle" type="checkbox" class="mr-2" onclick="togglePasswordInput()" />
-        Şifre Kullan
-      </label>
-      <input id="modalRoomPassword" type="password" placeholder="Oda Şifresi" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 transition hidden" autocomplete="new-password" />
+      <input id="modalRoomName" type="text" placeholder="Oda Adı (maks. 15 karakter)" maxlength="15" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500" autocomplete="off" />
       <div class="flex justify-between">
         <button onclick="hideCreateRoomModal()" class="bg-gray-600 text-white p-3 rounded-lg hover:bg-gray-700 btn">Geri</button>
         <button onclick="createRoomFromModal()" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 btn">Oluştur</button>
@@ -242,49 +187,7 @@
     </div>
   </div>
 
-  <!-- Şifreli Odaya Katılma Modalı -->
-  <div id="joinRoomModal" class="modal hidden">
-    <div class="modal-content">
-      <h2 class="text-xl font-bold mb-4">Odaya Katıl</h2>
-      <p class="text-gray-600 mb-3">Oda: <span id="joinRoomName"></span></p>
-      <input id="joinRoomPassword" type="password" placeholder="Oda Şifresi" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 transition" autocomplete="new-password" />
-      <div class="flex justify-between">
-        <button onclick="hideJoinRoomModal()" class="bg-gray-600 text-white p-3 rounded-lg hover:bg-gray-700 btn">Geri</button>
-        <button onclick="joinRoomFromModal()" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 btn">Katıl</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Ayarlar Modalı -->
-  <div id="settingsModal" class="modal hidden">
-    <div class="modal-content relative">
-      <span class="close-btn" onclick="hideSettingsModal()">×</span>
-      <h2 class="text-xl font-bold mb-4">Ayarlar</h2>
-      <div>
-        <label class="block text-gray-700 mb-2">Hesabı Sil</label>
-        <button onclick="requestAccountDeletion()" class="w-full bg-red-600 text-white p-3 rounded-lg hover:bg-red-700 btn">Hesabı Sil</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Oda Sahibi Ayarları Modalı -->
-  <div id="ownerSettingsModal" class="modal hidden">
-    <div class="modal-content relative">
-      <span class="close-btn" onclick="hideOwnerSettingsModal()">×</span>
-      <h2 class="text-xl font-bold mb-4">Oda Ayarları</h2>
-      <div class="mb-4">
-        <h3 class="text-lg font-semibold mb-2">Oyuncular</h3>
-        <ul id="playerList" class="space-y-2 mb-3"></ul>
-        <button onclick="closeRoom()" class="w-full bg-red-600 text-white p-3 rounded-lg hover:bg-red-700 btn">Odayı Kapat</button>
-      </div>
-      <div>
-        <h3 class="text-lg font-semibold mb-2">Banlanan Oyuncular</h3>
-        <ul id="bannedPlayerList" class="space-y-2"></ul>
-      </div>
-    </div>
-  </div>
-
-  <!-- Firebase SDK 8.10.0 -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -303,7 +206,6 @@
       measurementId: "G-WSKKZTXXBP"
     };
 
-    // Firebase'i Başlat
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const database = firebase.database();
@@ -312,28 +214,10 @@
     let playerId = null;
     let playerName = null;
     let currentRoomId = null;
-    let lastVerificationSent = 0;
+    let isSpectator = false;
+    let playerSymbol = null;
     let lastMessageTime = 0;
-    const VERIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 dakika
-    const MESSAGE_COOLDOWN = 10 * 1000; // 10 saniye
-
-    // URL'den roomId parametresini al
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomIdFromUrl = urlParams.get('roomId');
-
-    // Canvas boyutlarını sabitle
-    const CANVAS_WIDTH = 1200;
-    const CANVAS_HEIGHT = 900;
-    function lockCanvasSize() {
-      const canvas = document.getElementById('gameCanvas');
-      canvas.width = CANVAS_WIDTH;
-      canvas.height = CANVAS_HEIGHT;
-      canvas.style.width = '100%';
-      canvas.style.maxWidth = `${CANVAS_WIDTH}px`;
-      canvas.style.height = 'auto';
-    }
-    window.addEventListener('resize', lockCanvasSize);
-    window.addEventListener('load', lockCanvasSize);
+    const MESSAGE_COOLDOWN = 10 * 1000;
 
     // Rastgele davet kodu
     function generateInviteCode() {
@@ -362,102 +246,41 @@
         alert('Kullanıcı adı 20 karakterden uzun olamaz!');
         return;
       }
-      if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
-        alert('Geçerli bir e-posta adresi girin (örnek: ornek@gmail.com)!');
-        return;
-      }
       if (password.length < 8) {
         alert('Şifre en az 8 karakter olmalı!');
         return;
       }
 
-      // Kullanıcı adının daha önce alınıp alınmadığını kontrol et
       database.ref('usernames').child(username.toLowerCase()).once('value')
         .then((snapshot) => {
           if (snapshot.exists()) {
             alert('Bu kullanıcı adı zaten alınmış!');
             return;
           }
-
-          // Firebase Authentication ile kayıt
           auth.createUserWithEmailAndPassword(email, password)
             .then((userCredential) => {
               playerId = userCredential.user.uid;
               playerName = username;
-              // Kullanıcı bilgilerini kaydet
               return database.ref(`users/${playerId}`).set({
                 username: username,
                 usernameLower: username.toLowerCase(),
-                email: email,
-                createdRooms: 0
+                email: email
               });
             })
             .then(() => {
-              // Kullanıcı adını kaydet
               return database.ref(`usernames/${username.toLowerCase()}`).set(playerId);
             })
             .then(() => {
-              // E-posta doğrulama gönder
-              return auth.currentUser.sendEmailVerification();
-            })
-            .then(() => {
-              lastVerificationSent = Date.now();
-              alert('Kayıt başarılı! Lütfen e-postanızı doğrulayın.');
-              showVerificationScreen();
+              alert('Kayıt başarılı!');
+              showLogin();
             })
             .catch((error) => {
-              // Hata durumunda Authentication hesabını sil
-              if (auth.currentUser) {
-                auth.currentUser.delete()
-                  .then(() => {
-                    if (error.code === 'auth/email-already-in-use') {
-                      alert('Bu e-posta adresi zaten kayıtlı! Şifrenizi sıfırlamak için "Şifremi Unuttum" seçeneğini kullanabilirsiniz.');
-                    } else if (error.code === 'auth/invalid-email') {
-                      alert('Geçersiz e-posta formatı! Lütfen doğru bir e-posta adresi girin.');
-                    } else {
-                      alert('Kayıt işlemi başarısız oldu. Lütfen tekrar deneyin.');
-                    }
-                  })
-                  .catch((deleteError) => {
-                    alert(`Hata: ${deleteError.message}`);
-                  });
+              if (error.code === 'auth/email-already-in-use') {
+                alert('Bu e-posta adresi zaten kayıtlı!');
               } else {
-                alert('Kayıt işlemi başarısız oldu. Lütfen tekrar deneyin.');
+                alert(`Kayıt hatası: ${error.message}`);
               }
             });
-        })
-        .catch((error) => {
-          alert(`Veritabanı sorgu hatası. Lütfen tekrar deneyin.`);
-        });
-    }
-
-    // E-posta Doğrulama Ekranını Göster
-    function showVerificationScreen() {
-      document.getElementById('authScreen').style.display = 'none';
-      document.getElementById('verificationScreen').style.display = 'block';
-      document.getElementById('lobby').style.display = 'none';
-      document.getElementById('gameContainer').style.display = 'none';
-    }
-
-    // Tekrar Doğrulama E-postası Gönderme
-    function resendVerificationEmail() {
-      const now = Date.now();
-      if (now - lastVerificationSent < VERIFICATION_COOLDOWN) {
-        const remaining = Math.ceil((VERIFICATION_COOLDOWN - (now - lastVerificationSent)) / 1000);
-        alert(`Lütfen ${remaining} saniye bekleyin ve tekrar deneyin.`);
-        return;
-      }
-      if (!auth.currentUser) {
-        alert('Lütfen önce giriş yapın!');
-        return;
-      }
-      auth.currentUser.sendEmailVerification()
-        .then(() => {
-          lastVerificationSent = Date.now();
-          alert('Doğrulama e-postası gönderildi! E-postanızı (ve spam klasörünü) kontrol edin.');
-        })
-        .catch((error) => {
-          alert(`Hata: Doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.`);
         });
     }
 
@@ -472,20 +295,13 @@
 
       auth.signInWithEmailAndPassword(email, password)
         .then((userCredential) => {
-          if (!userCredential.user.emailVerified) {
-            showVerificationScreen();
-            return;
-          }
           playerId = userCredential.user.uid;
           database.ref(`users/${playerId}`).once('value', (snapshot) => {
             if (snapshot.exists()) {
               playerName = snapshot.val().username;
               document.getElementById('welcomeUsername').textContent = playerName;
               document.getElementById('authScreen').style.display = 'none';
-              document.getElementById('verificationScreen').style.display = 'none';
               document.getElementById('lobby').style.display = 'block';
-              listCreatedRooms();
-              checkUrlAndJoin();
             } else {
               alert('Kullanıcı verileri bulunamadı!');
               auth.signOut();
@@ -493,37 +309,7 @@
           });
         })
         .catch((error) => {
-          if (error.code === 'auth/wrong-password') {
-            alert('Yanlış şifre!');
-          } else if (error.code === 'auth/user-not-found') {
-            alert('Bu e-posta adresiyle kayıtlı bir hesap bulunamadı!');
-          } else {
-            alert(`Giriş hatası: Lütfen tekrar deneyin.`);
-          }
-        });
-    }
-
-    // Şifre Kurtarma
-    function resetPassword() {
-      const email = prompt('E-posta adresinizi girin (ör: ornek@gmail.com):');
-      if (!email) {
-        alert('Lütfen bir e-posta adresi girin!');
-        return;
-      }
-      if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
-        alert('Geçerli bir e-posta adresi girin!');
-        return;
-      }
-      auth.sendPasswordResetEmail(email)
-        .then(() => {
-          alert('Şifre sıfırlama e-postası gönderildi! E-postanızı (ve spam klasörünü) kontrol edin.');
-        })
-        .catch((error) => {
-          if (error.code === 'auth/user-not-found') {
-            alert('Bu e-posta adresiyle kayıtlı bir hesap bulunamadı!');
-          } else {
-            alert(`Hata: Şifre sıfırlama e-postası gönderilemedi.`);
-          }
+          alert(`Giriş hatası: ${error.message}`);
         });
     }
 
@@ -534,13 +320,12 @@
         playerName = null;
         document.getElementById('lobby').style.display = 'none';
         document.getElementById('gameContainer').style.display = 'none';
-        document.getElementById('verificationScreen').style.display = 'none';
         document.getElementById('authScreen').style.display = 'block';
         showLogin();
       });
     }
 
-    // Kayıt/Giriş Formları Arası Geçiş
+    // Kayıt/Giriş Formları
     function showLogin() {
       document.getElementById('registerForm').classList.add('hidden');
       document.getElementById('loginForm').classList.remove('hidden');
@@ -550,71 +335,17 @@
       document.getElementById('registerForm').classList.remove('hidden');
     }
 
-    // Hesap Silme
-    function requestAccountDeletion() {
-      if (!confirm('Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
-        return;
-      }
-      if (!auth.currentUser) {
-        alert('Lütfen önce giriş yapın!');
-        return;
-      }
-      const email = auth.currentUser.email;
-      auth.currentUser.sendEmailVerification()
-        .then(() => {
-          alert(`Hesap silme işlemi için doğrulama e-postası gönderildi: ${email}. Lütfen e-postanızdaki bağlantıya tıklayarak silmeyi onaylayın.`);
-          hideSettingsModal();
-          logout();
-        })
-        .catch((error) => {
-          alert(`Hata: Doğrulama e-postası gönderilemedi. Lütfen tekrar deneyin.`);
-        });
-    }
-
-    // Odalar Modalı
-    function showRoomsModal() {
-      document.getElementById('roomsModal').classList.remove('hidden');
-      document.getElementById('roomSearch').value = '';
-      listRooms();
-    }
-    function hideRoomsModal() {
-      document.getElementById('roomsModal').classList.add('hidden');
-    }
-    function filterRooms() {
-      const search = document.getElementById('roomSearch').value.trim().toLowerCase();
-      const roomList = document.getElementById('roomList');
-      const items = roomList.getElementsByTagName('li');
-      for (let item of items) {
-        const roomName = item.querySelector('.room-name').textContent.toLowerCase();
-        item.style.display = roomName.includes(search) ? '' : 'none';
-      }
-    }
-
     // Oda Oluşturma Modalı
     function showCreateRoomModal() {
       document.getElementById('createRoomModal').classList.remove('hidden');
       document.getElementById('modalRoomName').value = '';
-      document.getElementById('modalRoomTheme').value = 'default';
-      document.getElementById('modalRoomPasswordToggle').checked = false;
-      document.getElementById('modalRoomPassword').classList.add('hidden');
-      document.getElementById('modalRoomPassword').value = '';
     }
     function hideCreateRoomModal() {
       document.getElementById('createRoomModal').classList.add('hidden');
     }
-    function togglePasswordInput() {
-      const passwordInput = document.getElementById('modalRoomPassword');
-      passwordInput.classList.toggle('hidden', !document.getElementById('modalRoomPasswordToggle').checked);
-    }
     function createRoomFromModal() {
       const roomName = document.getElementById('modalRoomName').value.trim();
-      const theme = document.getElementById('modalRoomTheme').value;
-      const passwordToggle = document.getElementById('modalRoomPasswordToggle').checked;
-      const password = passwordToggle ? document.getElementById('modalRoomPassword').value : '';
-      
-      // Doğrulama
       if (!playerId || !playerName) {
-        console.error('Hata: playerId veya playerName eksik', { playerId, playerName });
         alert('Oturum hatası! Lütfen tekrar giriş yapın.');
         return;
       }
@@ -626,322 +357,47 @@
         alert('Oda adı 15 karakterden uzun olamaz!');
         return;
       }
-      if (!['default', 'forest', 'space'].includes(theme)) {
-        alert('Geçersiz tema seçimi!');
-        return;
-      }
 
-      // Oturum kontrolü
-      if (!auth.currentUser || auth.currentUser.uid !== playerId) {
-        console.error('Oturum uyumsuzluğu', { currentUser: auth.currentUser?.uid, playerId });
-        alert('Oturum hatası! Lütfen tekrar giriş yapın.');
-        return;
-      }
-
-      database.ref(`users/${playerId}`).once('value', (snapshot) => {
-        const userData = snapshot.val();
-        if (!userData) {
-          console.error('Kullanıcı verisi bulunamadı', { playerId });
-          alert('Kullanıcı verileri bulunamadı!');
-          return;
+      const roomId = Date.now().toString();
+      const inviteCode = generateInviteCode();
+      const roomRef = database.ref(`rooms/${roomId}`);
+      const roomData = {
+        name: roomName,
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+        owner: playerName,
+        ownerId: playerId,
+        inviteCode: inviteCode,
+        players: {
+          [playerId]: { name: playerName, symbol: 'X', online: true }
+        },
+        spectators: {},
+        game: {
+          board: '_________',
+          currentTurn: 'X',
+          status: 'ongoing',
+          restartRequests: {}
         }
-        const createdRooms = userData.createdRooms || 0;
-        if (createdRooms >= 2) {
-          alert('En fazla 2 oda oluşturabilirsiniz!');
-          return;
-        }
+      };
 
-        const roomId = Date.now().toString();
-        const inviteCode = generateInviteCode();
-        const roomRef = database.ref(`rooms/${roomId}`);
-        const roomData = {
-          name: roomName,
-          createdAt: firebase.database.ServerValue.TIMESTAMP,
-          owner: playerName,
-          ownerId: playerId,
-          theme: theme,
-          password: password,
-          inviteCode: inviteCode,
-          bannedPlayers: {},
-          players: {
-            [playerId]: { name: playerName, x: 100, y: 100, online: true }
-          }
-        };
-
-        console.log('Oda oluşturma verisi:', JSON.stringify(roomData, null, 2));
-        console.log('Oturum bilgileri:', { uid: auth.currentUser.uid, playerId });
-
-        roomRef.set(roomData)
-          .then(() => {
-            console.log('Oda oluşturuldu:', roomId);
-            return database.ref(`users/${playerId}`).update({ createdRooms: createdRooms + 1 });
-          })
-          .then(() => {
-            hideCreateRoomModal();
-            joinRoom(roomId, roomName, theme);
-          })
-          .catch((error) => {
-            console.error('Oda oluşturma hatası:', error);
-            alert(`Oda oluşturulamadı: ${error.message} (Konsolu kontrol edin)`);
-          });
-      }).catch((error) => {
-        console.error('Kullanıcı verisi alınamadı:', error);
-        alert('Hata: Kullanıcı verileri alınamadı.');
-      });
-    }
-
-    // Şifreli Odaya Katılma Modalı
-    function showJoinRoomModal(roomId, roomName, theme) {
-      document.getElementById('joinRoomModal').classList.remove('hidden');
-      document.getElementById('joinRoomName').textContent = roomName;
-      document.getElementById('joinRoomPassword').value = '';
-      window.joinRoomData = { roomId, roomName, theme };
-    }
-    function hideJoinRoomModal() {
-      document.getElementById('joinRoomModal').classList.add('hidden');
-      window.joinRoomData = null;
-    }
-    function joinRoomFromModal() {
-      const password = document.getElementById('joinRoomPassword').value;
-      const { roomId, roomName, theme } = window.joinRoomData || {};
-      if (!roomId) {
-        alert('Oda bilgisi eksik!');
-        return;
-      }
-      database.ref(`rooms/${roomId}/password`).once('value', (snapshot) => {
-        const correctPassword = snapshot.val();
-        if (correctPassword && password !== correctPassword) {
-          alert('Yanlış şifre!');
-          return;
-        }
-        hideJoinRoomModal();
-        joinRoom(roomId, roomName, theme);
-      });
-    }
-
-    // Oda Sahibi Ayarları Modalı
-    function showOwnerSettingsModal() {
-      document.getElementById('ownerSettingsModal').classList.remove('hidden');
-      listRoomPlayers();
-      listBannedPlayers();
-    }
-    function hideOwnerSettingsModal() {
-      document.getElementById('ownerSettingsModal').classList.add('hidden');
-    }
-    function listRoomPlayers() {
-      const playerList = document.getElementById('playerList');
-      playerList.innerHTML = '';
-      database.ref(`rooms/${currentRoomId}/players`).once('value', (snapshot) => {
-        snapshot.forEach((childSnapshot) => {
-          const player = childSnapshot.val();
-          const playerId = childSnapshot.key;
-          if (playerId !== playerId && player.online) {
-            const li = document.createElement('li');
-            li.className = 'p-2 bg-gray-50 rounded-lg flex justify-between items-center';
-            li.innerHTML = `
-              <span>${player.name}</span>
-              <div>
-                <button onclick="kickPlayer('${playerId}')" class="bg-yellow-600 text-white px-2 py-1 rounded-lg hover:bg-yellow-700 btn mr-2">Kick</button>
-                <button onclick="banPlayer('${playerId}')" class="bg-red-600 text-white px-2 py-1 rounded-lg hover:bg-red-700 btn">Ban</button>
-              </div>
-            `;
-            playerList.appendChild(li);
-          }
-        });
-      });
-    }
-    function listBannedPlayers() {
-      const bannedList = document.getElementById('bannedPlayerList');
-      bannedList.innerHTML = '';
-      database.ref(`rooms/${currentRoomId}/bannedPlayers`).once('value', (snapshot) => {
-        snapshot.forEach((childSnapshot) => {
-          const playerId = childSnapshot.key;
-          database.ref(`users/${playerId}/username`).once('value', (userSnapshot) => {
-            const username = userSnapshot.val();
-            const li = document.createElement('li');
-            li.className = 'p-2 bg-gray-50 rounded-lg flex justify-between items-center';
-            li.innerHTML = `
-              <span>${username}</span>
-              <button onclick="unbanPlayer('${playerId}')" class="bg-green-600 text-white px-2 py-1 rounded-lg hover:bg-green-700 btn">Banı Kaldır</button>
-            `;
-            bannedList.appendChild(li);
-          });
-        });
-      });
-    }
-    function kickPlayer(targetPlayerId) {
-      database.ref(`rooms/${currentRoomId}/players/${targetPlayerId}`).update({ online: false });
-      alert('Oyuncu odadan atıldı!');
-      listRoomPlayers();
-    }
-    function banPlayer(targetPlayerId) {
-      database.ref(`rooms/${currentRoomId}/bannedPlayers/${targetPlayerId}`).set(true)
+      console.log('Oda oluşturma verisi:', JSON.stringify(roomData, null, 2));
+      roomRef.set(roomData)
         .then(() => {
-          database.ref(`rooms/${currentRoomId}/players/${targetPlayerId}`).update({ online: false });
-          listRoomPlayers();
-          listBannedPlayers();
-          alert('Oyuncu banlandı!');
+          hideCreateRoomModal();
+          joinRoom(roomId, roomName, false);
+        })
+        .catch((error) => {
+          console.error('Oda oluşturma hatası:', error);
+          alert(`Oda oluşturulamadı: ${error.message}`);
         });
     }
-    function unbanPlayer(targetPlayerId) {
-      database.ref(`rooms/${currentRoomId}/bannedPlayers/${targetPlayerId}`).remove()
-        .then(() => {
-          listBannedPlayers();
-          alert('Oyuncunun banı kaldırıldı!');
-        });
+
+    // Odalar Modalı
+    function showRoomsModal() {
+      document.getElementById('roomsModal').classList.remove('hidden');
+      listRooms();
     }
-    function closeRoom() {
-      if (confirm('Odayı kapatmak istediğinizden emin misiniz?')) {
-        database.ref(`rooms/${currentRoomId}`).remove()
-          .then(() => {
-            database.ref(`users/${playerId}/createdRooms`).transaction((count) => (count || 0) - 1);
-            hideOwnerSettingsModal();
-            leaveRoom();
-            alert('Oda kapatıldı.');
-          });
-      }
-    }
-
-    // Ayarlar Modalı
-    function showSettingsModal() {
-      document.getElementById('settingsModal').classList.remove('hidden');
-    }
-    function hideSettingsModal() {
-      document.getElementById('settingsModal').classList.add('hidden');
-    }
-
-    // Davet Kodu Menüsünü Göster/Gizle
-    function showInviteCodeMenu() {
-      const menu = document.getElementById('inviteCodeMenu');
-      menu.classList.toggle('hidden');
-      if (!menu.classList.contains('hidden')) {
-        document.getElementById('inviteCode').focus();
-      }
-    }
-
-    // Oluşturulan Odaları Listele
-    function listCreatedRooms() {
-      const createdRoomsList = document.getElementById('createdRoomsList');
-      createdRoomsList.innerHTML = '';
-      database.ref('rooms').orderByChild('ownerId').equalTo(playerId).on('value', (snapshot) => {
-        createdRoomsList.innerHTML = '';
-        snapshot.forEach((childSnapshot) => {
-          const roomId = childSnapshot.key;
-          const roomData = childSnapshot.val();
-          const li = document.createElement('li');
-          li.className = 'p-4 bg-gray-50 rounded-lg shadow hover:bg-gray-100 transition';
-          li.innerHTML = `
-            <div class="text-lg font-semibold">${roomData.name}</div>
-            <div class="text-gray-600">Tema: ${roomData.theme === 'forest' ? 'Orman' : roomData.theme === 'space' ? 'Uzay' : 'Varsayılan'}</div>
-            <button onclick="deleteRoom('${roomId}')" class="mt-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 btn">Sil</button>
-          `;
-          createdRoomsList.appendChild(li);
-        });
-      });
-    }
-    function deleteRoom(roomId) {
-      if (confirm('Bu odayı silmek istediğinizden emin misiniz?')) {
-        database.ref(`rooms/${roomId}`).remove()
-          .then(() => {
-            database.ref(`users/${playerId}/createdRooms`).transaction((count) => (count || 0) - 1);
-            alert('Oda silindi.');
-          });
-      }
-    }
-
-    // Sunucu durumunu kontrol et
-    function checkServerStatus() {
-      const statusIndicator = document.getElementById('serverStatus');
-      database.ref('.info/connected').on('value', (snapshot) => {
-        if (snapshot.val() === true) {
-          statusIndicator.classList.remove('status-inactive');
-          statusIndicator.classList.add('status-active');
-        } else {
-          statusIndicator.classList.remove('status-active');
-          statusIndicator.classList.add('status-inactive');
-        }
-      });
-    }
-
-    // Odaya Katılma
-    function joinRoom(roomId, roomName, theme) {
-      // Ban kontrolü
-      database.ref(`rooms/${roomId}/bannedPlayers/${playerId}`).once('value', (snapshot) => {
-        if (snapshot.exists()) {
-          alert('Bu odadan banlandınız!');
-          return;
-        }
-        currentRoomId = roomId;
-        document.getElementById('lobby').style.display = 'none';
-        document.getElementById('gameContainer').style.display = 'flex';
-        document.getElementById('currentRoom').textContent = `Oda: ${roomName}`;
-
-        const playerRef = database.ref(`rooms/${roomId}/players/${playerId}`);
-        playerRef.set({ name: playerName, x: 100, y: 100, online: true });
-        playerRef.onDisconnect().update({ online: false });
-
-        // Oda sahibi kontrolü
-        database.ref(`rooms/${roomId}/ownerId`).once('value', (snapshot) => {
-          if (snapshot.val() === playerId) {
-            document.getElementById('ownerSettingsBtn').classList.remove('hidden');
-          } else {
-            document.getElementById('ownerSettingsBtn').classList.add('hidden');
-          }
-        });
-
-        startGame(roomId, theme);
-        startChat(roomId);
-        updatePlayerCount(roomId);
-        checkServerStatus();
-      });
-    }
-
-    // Davet Kodu ile Odaya Katılma
-    function joinRoomByInviteCode() {
-      const code = document.getElementById('inviteCode').value.trim().toUpperCase();
-      if (!code) {
-        alert('Lütfen bir davet kodu girin!');
-        return;
-      }
-
-      database.ref('rooms').orderByChild('inviteCode').equalTo(code).once('value', (snapshot) => {
-        if (!snapshot.exists()) {
-          alert('Geçersiz davet kodu!');
-          return;
-        }
-        snapshot.forEach((childSnapshot) => {
-          const roomId = childSnapshot.key;
-          const roomData = childSnapshot.val();
-          if (roomData.password) {
-            showJoinRoomModal(roomId, roomData.name, roomData.theme);
-          } else {
-            joinRoom(roomId, roomData.name, roomData.theme);
-          }
-        });
-      });
-    }
-
-    // Odadan Çıkma
-    function leaveRoom() {
-      if (currentRoomId) {
-        database.ref(`rooms/${currentRoomId}/players/${playerId}`).update({ online: false });
-        currentRoomId = null;
-        document.getElementById('lobby').style.display = 'block';
-        document.getElementById('gameContainer').style.display = 'none';
-        document.getElementById('chatMessages').innerHTML = '';
-        window.history.pushState({}, document.title, window.location.pathname);
-      }
-    }
-
-    // Davet Kodunu Kopyala
-    function copyInviteCode() {
-      if (!currentRoomId) return;
-      database.ref(`rooms/${currentRoomId}/inviteCode`).once('value', (snapshot) => {
-        const code = snapshot.val();
-        navigator.clipboard.writeText(code).then(() => {
-          alert('Davet kodu kopyalandı!');
-        });
-      });
+    function hideRoomsModal() {
+      document.getElementById('roomsModal').classList.add('hidden');
     }
 
     // Mevcut Odaları Listele
@@ -955,264 +411,188 @@
           const roomData = childSnapshot.val();
           let playerCount = 0;
           if (roomData.players) {
-            Object.values(roomData.players).forEach(player => {
-              if (player.online) playerCount++;
-            });
+            playerCount = Object.values(roomData.players).filter(p => p.online).length;
           }
           const li = document.createElement('li');
           li.className = 'p-4 bg-gray-50 rounded-lg shadow hover:bg-gray-100 transition';
+          const buttonText = playerCount >= 2 ? 'İzle' : 'Katıl';
+          const buttonAction = playerCount >= 2 ? `joinRoom('${roomId}', '${roomData.name}', true)` : `joinRoom('${roomId}', '${roomData.name}', false)`;
           li.innerHTML = `
-            <div class="text-lg font-semibold room-name">${roomData.name}</div>
+            <div class="text-lg font-semibold">${roomData.name}</div>
             <div class="text-gray-600">Oluşturan: ${roomData.owner}</div>
-            <div class="text-gray-600">Tema: ${roomData.theme === 'forest' ? 'Orman' : roomData.theme === 'space' ? 'Uzay' : 'Varsayılan'}</div>
-            <div class="text-gray-600">Oyuncu Sayısı: ${playerCount}</div>
-            <button onclick="promptForPassword('${roomId}', '${roomData.name}', '${roomData.theme}')" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 btn">Katıl</button>
+            <div class="text-gray-600">Kapasite: ${playerCount}/2</div>
+            <button onclick="${buttonAction}" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 btn">${buttonText}</button>
           `;
           roomList.appendChild(li);
         });
-        filterRooms();
       });
     }
 
-    // Şifre Sorma
-    function promptForPassword(roomId, roomName, theme) {
-      database.ref(`rooms/${roomId}/password`).once('value', (snapshot) => {
-        const password = snapshot.val();
-        if (password) {
-          showJoinRoomModal(roomId, roomName, theme);
-        } else {
-          joinRoom(roomId, roomName, theme);
-        }
-      });
-    }
+    // Odaya Katılma
+    function joinRoom(roomId, roomName, asSpectator) {
+      currentRoomId = roomId;
+      isSpectator = asSpectator;
+      document.getElementById('lobby').style.display = 'none';
+      document.getElementById('gameContainer').style.display = 'flex';
+      document.getElementById('currentRoom').textContent = `Oda: ${roomName}`;
 
-    // URL'deki roomId ile otomatik katılma
-    function checkUrlAndJoin() {
-      if (roomIdFromUrl && playerId) {
-        database.ref(`rooms/${roomIdFromUrl}`).once('value', (snapshot) => {
-          if (snapshot.exists()) {
-            const roomData = snapshot.val();
-            promptForPassword(roomIdFromUrl, roomData.name, roomData.theme);
-          } else {
-            alert('Bu oda bulunamadı!');
+      if (!asSpectator) {
+        database.ref(`rooms/${roomId}/players`).once('value', (snapshot) => {
+          const players = snapshot.val() || {};
+          const playerCount = Object.keys(players).length;
+          if (playerCount >= 2) {
+            alert('Oda dolu! İzleyici olarak katılabilirsiniz.');
+            joinRoom(roomId, roomName, true);
+            return;
           }
+          const symbol = playerCount === 0 ? 'X' : 'O';
+          playerSymbol = symbol;
+          const playerRef = database.ref(`rooms/${roomId}/players/${playerId}`);
+          playerRef.set({ name: playerName, symbol: symbol, online: true });
+          playerRef.onDisconnect().update({ online: false });
         });
-      } else if (roomIdFromUrl && !playerId) {
-        document.getElementById('authScreen').style.display = 'block';
-        document.getElementById('lobby').style.display = 'none';
+      } else {
+        const spectatorRef = database.ref(`rooms/${roomId}/spectators/${playerId}`);
+        spectatorRef.set({ name: playerName, online: true });
+        spectatorRef.onDisconnect().update({ online: false });
+      }
+
+      startGame(roomId);
+      startChat(roomId);
+      updatePlayerCount(roomId);
+    }
+
+    // Odadan Çıkma
+    function leaveRoom() {
+      if (currentRoomId) {
+        if (isSpectator) {
+          database.ref(`rooms/${currentRoomId}/spectators/${playerId}`).update({ online: false });
+        } else {
+          database.ref(`rooms/${currentRoomId}/players/${playerId}`).update({ online: false });
+        }
+        currentRoomId = null;
+        isSpectator = false;
+        playerSymbol = null;
+        document.getElementById('lobby').style.display = 'block';
         document.getElementById('gameContainer').style.display = 'none';
+        document.getElementById('chatMessages').innerHTML = '';
       }
     }
 
-    // 2D Oyun Başlatma
-    function startGame(roomId, theme) {
-      const canvas = document.getElementById('gameCanvas');
-      const ctx = canvas.getContext('2d');
-      let playerPos = { x: 100, y: 100 };
-      let playerState = { isJumping: false, jumpHeight: 0, direction: 'right', frame: 0, velocityY: 0 };
-      const SPEED = 5;
-      const JUMP_SPEED = 12;
-      const GRAVITY = 0.4;
-      const FRAME_RATE = 1000 / 60; // 60 FPS
+    // Oyunu Başlatma
+    function startGame(roomId) {
+      const gameBoard = document.getElementById('gameBoard');
+      gameBoard.innerHTML = '';
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('button');
+        cell.className = 'game-cell';
+        cell.disabled = isSpectator;
+        cell.addEventListener('click', () => makeMove(i));
+        gameBoard.appendChild(cell);
+      }
 
-      function drawBackground() {
-        if (theme === 'forest') {
-          ctx.fillStyle = '#228B22';
-          ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-          ctx.fillStyle = '#8B4513';
-          ctx.fillRect(0, CANVAS_HEIGHT - 50, CANVAS_WIDTH, 50);
-        } else if (theme === 'space') {
-          ctx.fillStyle = '#1C2526';
-          ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-          ctx.fillStyle = '#FFFFFF';
-          for (let i = 0; i < 50; i++) {
-            ctx.fillRect(Math.random() * CANVAS_WIDTH, Math.random() * CANVAS_HEIGHT, 2, 2);
+      const gameRef = database.ref(`rooms/${roomId}/game`);
+      gameRef.on('value', (snapshot) => {
+        const gameData = snapshot.val();
+        if (!gameData) return;
+        const cells = document.getElementsByClassName('game-cell');
+        for (let i = 0; i < 9; i++) {
+          cells[i].textContent = gameData.board[i] === '_' ? '' : gameData.board[i];
+          cells[i].disabled = isSpectator || gameData.status === 'finished' || gameData.board[i] !== '_' || gameData.currentTurn !== playerSymbol;
+        }
+
+        const statusDiv = document.getElementById('gameStatus');
+        if (gameData.status === 'finished') {
+          if (gameData.winner) {
+            database.ref(`rooms/${roomId}/players`).once('value', (snap) => {
+              const players = snap.val();
+              for (let pid in players) {
+                if (players[pid].symbol === gameData.winner) {
+                  statusDiv.textContent = `${players[pid].name} kazandı!`;
+                  break;
+                }
+              }
+            });
+          } else {
+            statusDiv.textContent = 'Berabere!';
           }
+          document.getElementById('restartBtn').classList.remove('hidden');
         } else {
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-        }
-      }
-
-      function drawStickman(x, y, direction, frame, isJumping) {
-        ctx.save();
-        ctx.translate(x, y);
-        if (direction === 'left') ctx.scale(-1, 1);
-        
-        // Kafa
-        ctx.beginPath();
-        ctx.arc(0, -20, 5, 0, Math.PI * 2);
-        ctx.fillStyle = 'black';
-        ctx.fill();
-        
-        // Gövde
-        ctx.beginPath();
-        ctx.moveTo(0, -15);
-        ctx.lineTo(0, 0);
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // Kollar
-        ctx.beginPath();
-        ctx.moveTo(-10, -10);
-        ctx.lineTo(10, -10);
-        ctx.stroke();
-        
-        // Bacaklar (yürüme animasyonu)
-        const isMoving = frame > 0;
-        const legAngle = isMoving && !isJumping ? Math.sin(frame * 0.2) * 0.6 : (isJumping ? -0.3 : 0);
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-5 + Math.cos(legAngle) * 5, 15);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(5 - Math.cos(legAngle) * 5, 15);
-        ctx.stroke();
-        
-        // Zıplama efekti
-        if (isJumping) {
-          ctx.beginPath();
-          ctx.arc(0, 15, 5, 0, Math.PI, true);
-          ctx.strokeStyle = 'gray';
-          ctx.stroke();
-        }
-        
-        ctx.restore();
-      }
-
-      function updateGame() {
-        if (playerState.isJumping) {
-          playerPos.y -= playerState.jumpHeight;
-          playerState.jumpHeight -= GRAVITY;
-          if (playerPos.y >= CANVAS_HEIGHT - 50) {
-            playerPos.y = CANVAS_HEIGHT - 50;
-            playerState.isJumping = false;
-            playerState.jumpHeight = 0;
-          }
-        }
-        playerPos.x = Math.max(0, Math.min(CANVAS_WIDTH - 20, playerPos.x));
-        playerPos.y = Math.max(0, Math.min(CANVAS_HEIGHT - 50, playerPos.y));
-        database.ref(`rooms/${roomId}/players/${playerId}`).update({ x: playerPos.x, y: playerPos.y });
-      }
-
-      const playersRef = database.ref(`rooms/${roomId}/players`);
-      playersRef.on('value', (snapshot) => {
-        drawBackground();
-        snapshot.forEach((childSnapshot) => {
-          const player = childSnapshot.val();
-          if (player.online) {
-            const isCurrentPlayer = childSnapshot.key === playerId;
-            drawStickman(
-              player.x,
-              player.y,
-              isCurrentPlayer ? playerState.direction : 'right',
-              isCurrentPlayer ? playerState.frame : 0,
-              isCurrentPlayer ? playerState.isJumping : false
-            );
-            ctx.fillStyle = 'black';
-            ctx.font = '12px Arial';
-            ctx.fillText(player.name, player.x - 10, player.y - 30);
-          }
-        });
-      });
-
-      let isMoving = false;
-      document.addEventListener('keydown', (e) => {
-        isMoving = true;
-        if (e.key === 'a' || e.key === 'A') {
-          playerPos.x -= SPEED;
-          playerState.direction = 'left';
-          playerState.frame++;
-        }
-        if (e.key === 'd' || e.key === 'D') {
-          playerPos.x += SPEED;
-          playerState.direction = 'right';
-          playerState.frame++;
-        }
-        if (e.key === 'w' || e.key === 'W') {
-          playerPos.y -= SPEED;
-          playerState.frame++;
-        }
-        if (e.key === 's' || e.key === 'S') {
-          playerPos.y += SPEED;
-          playerState.frame++;
-        }
-        if (e.key === ' ' && !playerState.isJumping) {
-          playerState.isJumping = true;
-          playerState.jumpHeight = JUMP_SPEED;
-        }
-        updateGame();
-      });
-
-      document.addEventListener('keyup', (e) => {
-        if (['a', 'A', 'd', 'D', 'w', 'W', 's', 'S'].includes(e.key)) {
-          isMoving = false;
-          playerState.frame = 0;
+          statusDiv.textContent = `Sıra: ${gameData.currentTurn}`;
+          document.getElementById('restartBtn').classList.add('hidden');
         }
       });
 
-      const joystickContainer = document.getElementById('joystickContainer');
-      const joystick = nipplejs.create({
-        zone: joystickContainer,
-        mode: 'static',
-        position: { left: '50%', top: '50%' },
-        color: 'blue'
-      });
-      joystick.on('move', (evt, data) => {
-        isMoving = true;
-        const speed = SPEED;
-        if (data.direction) {
-          if (data.direction.angle === 'up') {
-            playerPos.y -= speed;
-            playerState.frame++;
-          }
-          if (data.direction.angle === 'down') {
-            playerPos.y += speed;
-            playerState.frame++;
-          }
-          if (data.direction.angle === 'left') {
-            playerPos.x -= speed;
-            playerState.direction = 'left';
-            playerState.frame++;
-          }
-          if (data.direction.angle === 'right') {
-            playerPos.x += speed;
-            playerState.direction = 'right';
-            playerState.frame++;
-          }
-          updateGame();
+      document.getElementById('restartBtn').onclick = () => {
+        database.ref(`rooms/${roomId}/game/restartRequests/${playerId}`).set(true);
+      };
+
+      // Yeniden başlatma kontrolü
+      database.ref(`rooms/${roomId}/game/restartRequests`).on('value', (snapshot) => {
+        const requests = snapshot.val() || {};
+        const playerCount = Object.keys(requests).length;
+        if (playerCount === 2) {
+          database.ref(`rooms/${roomId}/game`).update({
+            board: '_________',
+            currentTurn: gameRef.once('value').then(snap => snap.val().currentTurn === 'X' ? 'O' : 'X'),
+            status: 'ongoing',
+            winner: null,
+            restartRequests: {}
+          });
         }
       });
-      joystick.on('end', () => {
-        isMoving = false;
-        playerState.frame = 0;
-      });
+    }
 
-      setInterval(() => {
-        if (isMoving && !playerState.isJumping) playerState.frame++;
-      }, FRAME_RATE);
+    // Hamle Yapma
+    function makeMove(index) {
+      if (isSpectator) return;
+      const gameRef = database.ref(`rooms/${currentRoomId}/game`);
+      gameRef.once('value', (snapshot) => {
+        const gameData = snapshot.val();
+        if (gameData.status !== 'ongoing' || gameData.currentTurn !== playerSymbol || gameData.board[index] !== '_') {
+          return;
+        }
+        let newBoard = gameData.board.split('');
+        newBoard[index] = playerSymbol;
+        newBoard = newBoard.join('');
+        const newTurn = playerSymbol === 'X' ? 'O' : 'X';
+        let updates = { board: newBoard, currentTurn: newTurn };
+
+        // Kazanan kontrolü
+        const winPatterns = [
+          [0,1,2], [3,4,5], [6,7,8], // Yatay
+          [0,3,6], [1,4,7], [2,5,8], // Dikey
+          [0,4,8], [2,4,6] // Çapraz
+        ];
+        let winner = null;
+        for (let pattern of winPatterns) {
+          if (newBoard[pattern[0]] !== '_' && newBoard[pattern[0]] === newBoard[pattern[1]] && newBoard[pattern[1]] === newBoard[pattern[2]]) {
+            winner = newBoard[pattern[0]];
+            break;
+          }
+        }
+        if (winner) {
+          updates.status = 'finished';
+          updates.winner = winner;
+        } else if (!newBoard.includes('_')) {
+          updates.status = 'finished';
+        }
+
+        gameRef.update(updates);
+      });
     }
 
     // Sohbet Başlatma
     function startChat(roomId) {
       const chatMessages = document.getElementById('chatMessages');
       const chatRef = database.ref(`chats/${roomId}`);
-
       chatRef.on('value', (snapshot) => {
         chatMessages.innerHTML = '';
         snapshot.forEach((childSnapshot) => {
           const message = childSnapshot.val();
-          const messageTime = message.timestamp;
-          const currentTime = Date.now();
-          if (currentTime - messageTime > 300000) {
-            childSnapshot.ref.remove();
-            return;
-          }
           const div = document.createElement('div');
           div.className = `message-bubble ${message.sender === playerName ? 'message-own' : 'message-other'}`;
-          const date = new Date(messageTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+          const date = new Date(message.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
           div.innerHTML = `<strong>${message.sender}</strong> <span class="text-xs ${message.sender === playerName ? 'text-white' : 'text-gray-500'}">[${date}]</span><br>${message.text}`;
           chatMessages.appendChild(div);
           chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -1227,8 +607,7 @@
       const now = Date.now();
       if (!messageText || !currentRoomId) return;
       if (now - lastMessageTime < MESSAGE_COOLDOWN) {
-        const remaining = Math.ceil((MESSAGE_COOLDOWN - (now - lastMessageTime)) / 1000);
-        alert(`Lütfen ${remaining} saniye bekleyin ve tekrar deneyin.`);
+        alert(`Lütfen ${Math.ceil((MESSAGE_COOLDOWN - (now - lastMessageTime)) / 1000)} saniye bekleyin.`);
         return;
       }
 
@@ -1249,45 +628,34 @@
         snapshot.forEach((childSnapshot) => {
           if (childSnapshot.val().online) count++;
         });
-        playerCount.textContent = `Oyuncu Sayısı: ${count}`;
+        playerCount.textContent = `Oyuncu Sayısı: ${count}/2`;
       });
     }
 
-    // Enter tuşu ile mesaj gönderme
+    // Enter ile mesaj gönderme
     document.getElementById('chatInput').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') sendMessage();
     });
 
-    // Oturum durumunu kontrol et
+    // Oturum Kontrolü
     auth.onAuthStateChanged((user) => {
       if (user) {
-        console.log('Oturum açıldı:', { uid: user.uid });
         playerId = user.uid;
-        if (!user.emailVerified) {
-          showVerificationScreen();
-          return;
-        }
         database.ref(`users/${playerId}`).once('value', (snapshot) => {
           if (snapshot.exists()) {
             playerName = snapshot.val().username;
             document.getElementById('welcomeUsername').textContent = playerName;
             document.getElementById('authScreen').style.display = 'none';
-            document.getElementById('verificationScreen').style.display = 'none';
             document.getElementById('lobby').style.display = 'block';
-            listCreatedRooms();
-            checkUrlAndJoin();
           } else {
-            alert('Kullanıcı verileri bulunamadı, lütfen tekrar kayıt olun.');
+            alert('Kullanıcı verileri bulunamadı!');
             auth.signOut();
           }
         });
       } else {
-        console.log('Oturum kapalı');
         document.getElementById('authScreen').style.display = 'block';
         document.getElementById('lobby').style.display = 'none';
         document.getElementById('gameContainer').style.display = 'none';
-        document.getElementById('verificationScreen').style.display = 'none';
-        checkUrlAndJoin();
       }
     });
   </script>
