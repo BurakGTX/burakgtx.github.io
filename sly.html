@@ -609,7 +609,7 @@
         const roomRef = database.ref(`rooms/${roomId}`);
         roomRef.set({
           name: roomName,
-          createdAt: firebase.database.ServerValue.TIMESTAMP,
+          createdAt: firebase.database.ServerValueistles,
           owner: playerName,
           ownerId: playerId,
           theme: theme,
@@ -622,6 +622,9 @@
           database.ref(`users/${playerId}`).update({ createdRooms: createdRooms + 1 });
           hideCreateRoomModal();
           joinRoom(roomId, roomName, theme);
+        }).catch((error) => {
+          console.error('Oda oluşturma hatası:', error);
+          alert('Oda oluşturulamadı. Lütfen tekrar deneyin.');
         });
       });
     }
@@ -701,19 +704,32 @@
 
     // Odaya Katılma
     function joinRoom(roomId, roomName, theme) {
+      if (!playerId || !auth.currentUser || playerId !== auth.currentUser.uid) {
+        alert('Oturum hatası! Lütfen tekrar giriş yapın.');
+        logout();
+        return;
+      }
+
       currentRoomId = roomId;
       document.getElementById('lobby').style.display = 'none';
       document.getElementById('gameContainer').style.display = 'block';
       document.getElementById('currentRoom').textContent = `Oda: ${roomName}`;
 
       const playerRef = database.ref(`rooms/${roomId}/players/${playerId}`);
-      playerRef.set({ name: playerName, x: 100, y: 100, online: true });
-      playerRef.onDisconnect().update({ online: false });
-
-      startGame(roomId, theme);
-      startChat(roomId);
-      updatePlayerCount(roomId);
-      checkServerStatus();
+      playerRef.set({ name: playerName, x: 100, y: 100, online: true })
+        .then(() => {
+          console.log(`Oyuncu ${playerId} odaya katıldı: ${roomId}`);
+          playerRef.onDisconnect().update({ online: false });
+          startGame(roomId, theme);
+          startChat(roomId);
+          updatePlayerCount(roomId);
+          checkServerStatus();
+        })
+        .catch((error) => {
+          console.error('Oyuncu ekleme hatası:', error);
+          alert('Odaya katılamadınız. Lütfen tekrar deneyin.');
+          leaveRoom();
+        });
     }
 
     // Davet Kodu ile Odaya Katılma
@@ -744,7 +760,8 @@
     // Odadan Çıkma
     function leaveRoom() {
       if (currentRoomId) {
-        database.ref(`rooms/${currentRoomId}/players/${playerId}`).update({ online: false });
+        database.ref(`rooms/${currentRoomId}/players/${playerId}`).update({ online: false })
+          .catch((error) => console.error('Odadan çıkma hatası:', error));
         currentRoomId = null;
         document.getElementById('lobby').style.display = 'block';
         document.getElementById('gameContainer').style.display = 'none';
@@ -861,6 +878,9 @@
             ctx.fillStyle = 'black';
             ctx.font = '12px Arial';
             ctx.fillText(player.name, player.x, player.y - 10);
+          } else {
+            // Çevrimdışı oyuncuları temizle
+            childSnapshot.ref.remove().catch((error) => console.error('Çevrimdışı oyuncu temizleme hatası:', error));
           }
         });
       });
@@ -868,7 +888,13 @@
       function updatePlayerPosition() {
         playerPos.x = Math.max(0, Math.min(CANVAS_WIDTH - 20, playerPos.x));
         playerPos.y = Math.max(0, Math.min(CANVAS_HEIGHT - 20, playerPos.y));
-        database.ref(`rooms/${roomId}/players/${playerId}`).update({ x: playerPos.x, y: playerPos.y });
+        const playerData = { x: playerPos.x, y: playerPos.y };
+        console.log('Oyuncu pozisyonu güncelleniyor:', { playerId, roomId, playerData });
+        database.ref(`rooms/${roomId}/players/${playerId}`).update(playerData)
+          .catch((error) => {
+            console.error('Pozisyon güncelleme hatası:', error);
+            alert('Hareket kaydedilemedi. Lütfen tekrar deneyin.');
+          });
       }
 
       document.addEventListener('keydown', (e) => {
@@ -965,6 +991,9 @@
       }).then(() => {
         lastMessageTime = now;
         chatInput.value = '';
+      }).catch((error) => {
+        console.error('Mesaj gönderme hatası:', error);
+        alert('Mesaj gönderilemedi. Lütfen tekrar deneyin.');
       });
     }
 
