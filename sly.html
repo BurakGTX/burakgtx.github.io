@@ -99,22 +99,38 @@
     .close-btn:hover {
       color: #1F2937;
     }
-    #chatPanel {
-      transition: transform 0.3s ease;
+    #gameContainer {
+      display: flex;
+      gap: 20px;
     }
-    #chatPanel.hidden {
-      transform: translateX(100%);
+    #chatPanel {
+      width: 300px;
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    @media (max-width: 768px) {
+      #gameContainer {
+        flex-direction: column;
+      }
+      #chatPanel {
+        width: 100%;
+        max-height: 200px;
+      }
+      #chatMessages {
+        max-height: 120px;
+      }
+      canvas {
+        width: 100%;
+        height: auto;
+      }
+      .modal-content {
+        max-width: 90%;
+      }
     }
     @media (min-width: 640px) {
       #joystickContainer { display: none; }
-    }
-    @media (max-width: 640px) {
-      #authScreen, #lobby, #verificationScreen { max-width: 90%; }
-      #gameContainer { flex-direction: column; }
-      #chatMessages { max-height: 200px; }
-      canvas { width: 100%; height: auto; }
-      .modal-content { max-width: 90%; }
-      #chatPanel { width: 100%; }
     }
   </style>
 </head>
@@ -169,7 +185,7 @@
   </div>
 
   <!-- Oyun Ekranı -->
-  <div id="gameContainer" class="hidden w-full max-w-7xl relative">
+  <div id="gameContainer" class="hidden w-full max-w-7xl">
     <div class="flex justify-between items-center mb-6">
       <h2 id="currentRoom" class="text-2xl font-bold text-white"></h2>
       <div class="flex items-center space-x-4">
@@ -177,21 +193,21 @@
         <span class="text-white">Sunucu: <span id="serverStatus" class="status-indicator"></span></span>
       </div>
     </div>
-    <div class="relative">
-      <canvas id="gameCanvas" width="1200" height="900" class="rounded-2xl shadow-2xl w-full"></canvas>
-      <button onclick="copyInviteCode()" class="absolute top-4 right-4 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 btn">Davet Kodunu Kopyala</button>
-      <button onclick="toggleFullScreen()" class="absolute top-4 left-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 btn">Tam Ekran</button>
-      <button onclick="showOwnerSettingsModal()" id="ownerSettingsBtn" class="absolute top-12 right-4 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 btn hidden">Oda Ayarları</button>
-      <div id="joystickContainer"></div>
-      <div id="chatPanel" class="absolute top-0 right-0 w-1/3 bg-white rounded-2xl shadow-2xl p-6 hidden sm:block">
+    <div class="flex gap-4">
+      <canvas id="gameCanvas" width="1200" height="900" class="rounded-2xl shadow-2xl"></canvas>
+      <div id="chatPanel" class="w-80">
         <h3 class="text-xl font-semibold text-gray-900 mb-3">Sohbet</h3>
         <div id="chatMessages" class="border p-3 rounded-lg mb-3 bg-gray-50"></div>
         <input id="chatInput" type="text" placeholder="Mesaj yaz (maks. 50 karakter)" maxlength="50" class="w-full p-3 border rounded-lg mb-3 focus:ring-2 focus:ring-green-500 transition" autocomplete="off" />
         <button onclick="sendMessage()" class="w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 btn">Gönder</button>
       </div>
-      <button onclick="toggleChatPanel()" id="chatIcon" class="absolute top-4 right-16 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 btn hidden">Sohbet</button>
     </div>
-    <button onclick="leaveRoom()" class="mt-6 bg-red-600 text-white p-3 rounded-lg hover:bg-red-700 btn">Odadan Çık</button>
+    <div class="flex gap-4 mt-6">
+      <button onclick="copyInviteCode()" id="copyInviteBtn" class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 btn">Davet Kodunu Kopyala</button>
+      <button onclick="showOwnerSettingsModal()" id="ownerSettingsBtn" class="bg-orange-600 text-white p-3 rounded-lg hover:bg-orange-700 btn hidden">Oda Ayarları</button>
+      <button onclick="leaveRoom()" id="leaveRoomBtn" class="bg-red-600 text-white p-3 rounded-lg hover:bg-red-700 btn">Odadan Çık</button>
+    </div>
+    <div id="joystickContainer"></div>
   </div>
 
   <!-- Odalar Modalı -->
@@ -595,13 +611,40 @@
       const theme = document.getElementById('modalRoomTheme').value;
       const passwordToggle = document.getElementById('modalRoomPasswordToggle').checked;
       const password = passwordToggle ? document.getElementById('modalRoomPassword').value : '';
+      
+      // Doğrulama
+      if (!playerId || !playerName) {
+        console.error('Hata: playerId veya playerName eksik', { playerId, playerName });
+        alert('Oturum hatası! Lütfen tekrar giriş yapın.');
+        return;
+      }
       if (!roomName) {
         alert('Lütfen oda adı girin!');
+        return;
+      }
+      if (roomName.length > 15) {
+        alert('Oda adı 15 karakterden uzun olamaz!');
+        return;
+      }
+      if (!['default', 'forest', 'space'].includes(theme)) {
+        alert('Geçersiz tema seçimi!');
+        return;
+      }
+
+      // Oturum kontrolü
+      if (!auth.currentUser || auth.currentUser.uid !== playerId) {
+        console.error('Oturum uyumsuzluğu', { currentUser: auth.currentUser?.uid, playerId });
+        alert('Oturum hatası! Lütfen tekrar giriş yapın.');
         return;
       }
 
       database.ref(`users/${playerId}`).once('value', (snapshot) => {
         const userData = snapshot.val();
+        if (!userData) {
+          console.error('Kullanıcı verisi bulunamadı', { playerId });
+          alert('Kullanıcı verileri bulunamadı!');
+          return;
+        }
         const createdRooms = userData.createdRooms || 0;
         if (createdRooms >= 2) {
           alert('En fazla 2 oda oluşturabilirsiniz!');
@@ -611,7 +654,7 @@
         const roomId = Date.now().toString();
         const inviteCode = generateInviteCode();
         const roomRef = database.ref(`rooms/${roomId}`);
-        roomRef.set({
+        const roomData = {
           name: roomName,
           createdAt: firebase.database.ServerValue.TIMESTAMP,
           owner: playerName,
@@ -623,11 +666,27 @@
           players: {
             [playerId]: { name: playerName, x: 100, y: 100, online: true }
           }
-        }).then(() => {
-          database.ref(`users/${playerId}`).update({ createdRooms: createdRooms + 1 });
-          hideCreateRoomModal();
-          joinRoom(roomId, roomName, theme);
-        });
+        };
+
+        console.log('Oda oluşturma verisi:', JSON.stringify(roomData, null, 2));
+        console.log('Oturum bilgileri:', { uid: auth.currentUser.uid, playerId });
+
+        roomRef.set(roomData)
+          .then(() => {
+            console.log('Oda oluşturuldu:', roomId);
+            return database.ref(`users/${playerId}`).update({ createdRooms: createdRooms + 1 });
+          })
+          .then(() => {
+            hideCreateRoomModal();
+            joinRoom(roomId, roomName, theme);
+          })
+          .catch((error) => {
+            console.error('Oda oluşturma hatası:', error);
+            alert(`Oda oluşturulamadı: ${error.message} (Konsolu kontrol edin)`);
+          });
+      }).catch((error) => {
+        console.error('Kullanıcı verisi alınamadı:', error);
+        alert('Hata: Kullanıcı verileri alınamadı.');
       });
     }
 
@@ -713,6 +772,7 @@
     function kickPlayer(targetPlayerId) {
       database.ref(`rooms/${currentRoomId}/players/${targetPlayerId}`).update({ online: false });
       alert('Oyuncu odadan atıldı!');
+      listRoomPlayers();
     }
     function banPlayer(targetPlayerId) {
       database.ref(`rooms/${currentRoomId}/bannedPlayers/${targetPlayerId}`).set(true)
@@ -813,7 +873,7 @@
         }
         currentRoomId = roomId;
         document.getElementById('lobby').style.display = 'none';
-        document.getElementById('gameContainer').style.display = 'block';
+        document.getElementById('gameContainer').style.display = 'flex';
         document.getElementById('currentRoom').textContent = `Oda: ${roomName}`;
 
         const playerRef = database.ref(`rooms/${roomId}/players/${playerId}`);
@@ -869,9 +929,6 @@
         document.getElementById('lobby').style.display = 'block';
         document.getElementById('gameContainer').style.display = 'none';
         document.getElementById('chatMessages').innerHTML = '';
-        document.getElementById('chatPanel').classList.remove('hidden');
-        document.getElementById('chatIcon').classList.add('hidden');
-        exitFullScreen();
         window.history.pushState({}, document.title, window.location.pathname);
       }
     }
@@ -947,42 +1004,16 @@
       }
     }
 
-    // Tam Ekran Modu
-    function toggleFullScreen() {
-      const canvas = document.getElementById('gameCanvas');
-      if (!document.fullscreenElement) {
-        canvas.requestFullscreen().then(() => {
-          document.getElementById('chatPanel').classList.add('hidden');
-          document.getElementById('chatIcon').classList.remove('hidden');
-        });
-      } else {
-        document.exitFullscreen();
-        document.getElementById('chatPanel').classList.remove('hidden');
-        document.getElementById('chatIcon').classList.add('hidden');
-      }
-    }
-    function exitFullScreen() {
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      }
-    }
-    function toggleChatPanel() {
-      const chatPanel = document.getElementById('chatPanel');
-      chatPanel.classList.toggle('hidden');
-      if (!chatPanel.classList.contains('hidden')) {
-        document.getElementById('chatInput').focus();
-      }
-    }
-
     // 2D Oyun Başlatma
     function startGame(roomId, theme) {
       const canvas = document.getElementById('gameCanvas');
       const ctx = canvas.getContext('2d');
       let playerPos = { x: 100, y: 100 };
-      let playerState = { isJumping: false, jumpHeight: 0, direction: 'right', frame: 0 };
-      const JUMP_SPEED = 15;
-      const GRAVITY = 0.5;
-      const FRAME_RATE = 1000 / 30; // 30 FPS
+      let playerState = { isJumping: false, jumpHeight: 0, direction: 'right', frame: 0, velocityY: 0 };
+      const SPEED = 5;
+      const JUMP_SPEED = 12;
+      const GRAVITY = 0.4;
+      const FRAME_RATE = 1000 / 60; // 60 FPS
 
       function drawBackground() {
         if (theme === 'forest') {
@@ -1029,7 +1060,8 @@
         ctx.stroke();
         
         // Bacaklar (yürüme animasyonu)
-        const legAngle = isJumping ? 0 : Math.sin(frame * 0.1) * 0.5;
+        const isMoving = frame > 0;
+        const legAngle = isMoving && !isJumping ? Math.sin(frame * 0.2) * 0.6 : (isJumping ? -0.3 : 0);
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(-5 + Math.cos(legAngle) * 5, 15);
@@ -1054,13 +1086,14 @@
         if (playerState.isJumping) {
           playerPos.y -= playerState.jumpHeight;
           playerState.jumpHeight -= GRAVITY;
-          if (playerPos.y >= 100) {
-            playerPos.y = 100;
+          if (playerPos.y >= CANVAS_HEIGHT - 50) {
+            playerPos.y = CANVAS_HEIGHT - 50;
             playerState.isJumping = false;
+            playerState.jumpHeight = 0;
           }
         }
         playerPos.x = Math.max(0, Math.min(CANVAS_WIDTH - 20, playerPos.x));
-        playerPos.y = Math.max(0, Math.min(CANVAS_HEIGHT - 20, playerPos.y));
+        playerPos.y = Math.max(0, Math.min(CANVAS_HEIGHT - 50, playerPos.y));
         database.ref(`rooms/${roomId}/players/${playerId}`).update({ x: playerPos.x, y: playerPos.y });
       }
 
@@ -1085,20 +1118,25 @@
         });
       });
 
+      let isMoving = false;
       document.addEventListener('keydown', (e) => {
-        const speed = 5;
+        isMoving = true;
         if (e.key === 'a' || e.key === 'A') {
-          playerPos.x -= speed;
+          playerPos.x -= SPEED;
           playerState.direction = 'left';
           playerState.frame++;
         }
         if (e.key === 'd' || e.key === 'D') {
-          playerPos.x += speed;
+          playerPos.x += SPEED;
           playerState.direction = 'right';
           playerState.frame++;
         }
         if (e.key === 'w' || e.key === 'W') {
-          playerPos.y -= speed;
+          playerPos.y -= SPEED;
+          playerState.frame++;
+        }
+        if (e.key === 's' || e.key === 'S') {
+          playerPos.y += SPEED;
           playerState.frame++;
         }
         if (e.key === ' ' && !playerState.isJumping) {
@@ -1106,6 +1144,13 @@
           playerState.jumpHeight = JUMP_SPEED;
         }
         updateGame();
+      });
+
+      document.addEventListener('keyup', (e) => {
+        if (['a', 'A', 'd', 'D', 'w', 'W', 's', 'S'].includes(e.key)) {
+          isMoving = false;
+          playerState.frame = 0;
+        }
       });
 
       const joystickContainer = document.getElementById('joystickContainer');
@@ -1116,10 +1161,17 @@
         color: 'blue'
       });
       joystick.on('move', (evt, data) => {
-        const speed = 5;
+        isMoving = true;
+        const speed = SPEED;
         if (data.direction) {
-          if (data.direction.angle === 'up') playerPos.y -= speed;
-          if (data.direction.angle === 'down') playerPos.y += speed;
+          if (data.direction.angle === 'up') {
+            playerPos.y -= speed;
+            playerState.frame++;
+          }
+          if (data.direction.angle === 'down') {
+            playerPos.y += speed;
+            playerState.frame++;
+          }
           if (data.direction.angle === 'left') {
             playerPos.x -= speed;
             playerState.direction = 'left';
@@ -1133,9 +1185,13 @@
           updateGame();
         }
       });
+      joystick.on('end', () => {
+        isMoving = false;
+        playerState.frame = 0;
+      });
 
       setInterval(() => {
-        if (!playerState.isJumping) playerState.frame++;
+        if (isMoving && !playerState.isJumping) playerState.frame++;
       }, FRAME_RATE);
     }
 
@@ -1205,6 +1261,7 @@
     // Oturum durumunu kontrol et
     auth.onAuthStateChanged((user) => {
       if (user) {
+        console.log('Oturum açıldı:', { uid: user.uid });
         playerId = user.uid;
         if (!user.emailVerified) {
           showVerificationScreen();
@@ -1225,6 +1282,7 @@
           }
         });
       } else {
+        console.log('Oturum kapalı');
         document.getElementById('authScreen').style.display = 'block';
         document.getElementById('lobby').style.display = 'none';
         document.getElementById('gameContainer').style.display = 'none';
