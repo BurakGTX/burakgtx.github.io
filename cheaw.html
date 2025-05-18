@@ -1,0 +1,1822 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatApp</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        /* Your existing CSS remains unchanged */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #2c2f33;
+            color: #dcddde;
+            min-height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #2c2f33;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            flex-direction: column;
+        }
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid #5865f2;
+            border-top: 6px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            font-size: 1.5em;
+            color: #fff;
+            text-shadow: 0 0 10px #5865f2;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .app-container {
+            width: 100%;
+            height: 100vh;
+            display: none;
+            flex-direction: row;
+            background: #36393f;
+        }
+        .server-sidebar {
+            width: 72px;
+            background: #202225;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .server-icon {
+            width: 48px;
+            height: 48px;
+            background: #5865f2;
+            border-radius: 50%;
+            margin: 5px 0;
+            cursor: pointer;
+            transition: border-radius 0.2s;
+        }
+        .server-icon img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .server-icon:hover {
+            border-radius: 15px;
+        }
+        .add-server {
+            background: #2f3136;
+            color: #43b581;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+        }
+        .add-server:hover {
+            background: #43b581;
+            color: #fff;
+            border-radius: 15px;
+        }
+        .dm-sidebar {
+            width: 240px;
+            background: #2f3136;
+            padding: 10px;
+            display: none;
+            flex-direction: column;
+        }
+        .dm-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            color: #fff;
+            font-size: 1.1em;
+        }
+        .dm-toggle {
+            background: none;
+            border: none;
+            color: #dcddde;
+            cursor: pointer;
+        }
+        .dm-list, .friends-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .dm-item, .friend-item {
+            padding: 8px 15px;
+            margin: 2px 0;
+            background: #40444b;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .dm-item:hover, .dm-item.active, .friend-item:hover, .friend-item.active {
+            background: #5865f2;
+        }
+        .channel-sidebar {
+            width: 240px;
+            background: #2f3136;
+            padding: 20px 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .server-name {
+            padding: 10px;
+            font-size: 1.1em;
+            color: #fff;
+            cursor: pointer;
+            position: relative;
+        }
+        .server-menu, .server-context-menu, .channel-context-menu, .user-context-menu {
+            position: absolute;
+            background: #18191c;
+            border-radius: 5px;
+            padding: 10px;
+            display: none;
+            z-index: 1000;
+        }
+        .server-menu button, .server-context-menu button, .channel-context-menu button, .user-context-menu button {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            background: none;
+            border: none;
+            color: #dcddde;
+            text-align: left;
+            cursor: pointer;
+        }
+        .server-menu button:hover, .server-context-menu button:hover, .channel-context-menu button:hover, .user-context-menu button:hover {
+            background: #5865f2;
+        }
+        .channel-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .category {
+            margin: 10px 0;
+        }
+        .category-name {
+            padding: 5px;
+            color: #b9bbbe;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+        .channel-item {
+            padding: 8px 15px;
+            margin: 2px 0;
+            background: #40444b;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .channel-item:hover, .channel-item.active {
+            background: #5865f2;
+        }
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            padding: 15px;
+            background: #36393f;
+            border-bottom: 1px solid #202225;
+            font-size: 1.2em;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .messages {
+            flex: 1;
+            padding: 20px;
+            background: #36393f;
+            overflow-y: auto;
+        }
+        .message {
+            display: flex;
+            align-items: flex-start;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+        .message:hover {
+            background: #32353b;
+        }
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 15px;
+        }
+        .message-content {
+            flex: 1;
+        }
+        .message-username {
+            font-weight: 600;
+        }
+        .message-id {
+            font-size: 0.8em;
+            color: #72767d;
+            margin-left: 10px;
+        }
+        .message-text {
+            margin-top: 5px;
+            font-size: 0.95em;
+        }
+        .message-timestamp {
+            font-size: 0.8em;
+            color: #72767d;
+            margin-left: 10px;
+        }
+        .message-actions {
+            margin-left: 15px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .message:hover .message-actions {
+            opacity: 1;
+        }
+        .message-actions button {
+            background: #ff5555;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        .message-actions button.edit {
+            background: #5865f2;
+        }
+        .input-area {
+            padding: 20px;
+            background: #40444b;
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+        .input-area input {
+            flex: 1;
+            padding: 12px;
+            font-size: 0.95em;
+            border: none;
+            border-radius: 5px;
+            background: #30333a;
+            color: #dcddde;
+            outline: none;
+        }
+        .input-area button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            background: #5865f2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .user-sidebar {
+            width: 240px;
+            background: #2f3136;
+            padding: 20px 10px;
+        }
+        .user-sidebar h3 {
+            color: #b9bbbe;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+        .user-list {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .user {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+        .user:hover {
+            background: #40444b;
+        }
+        .user img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .user span {
+            font-size: 0.9em;
+        }
+        .crown-icon {
+            width: 16px;
+            height: 16px;
+            margin-left: 5px;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-left: 10px;
+        }
+        .online { background: #43b581; }
+        .offline { background: #747f8d; }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .overlay-box {
+            background: #36393f;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            width: 400px;
+            max-width: 90%;
+        }
+        .overlay-box h2 {
+            color: #fff;
+            margin-bottom: 20px;
+        }
+        .overlay-box input, .overlay-box select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            background: #40444b;
+            color: #dcddde;
+            font-size: 1em;
+        }
+        .overlay-box button {
+            padding: 12px 20px;
+            background: #5865f2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .server-settings-panel {
+            padding: 15px;
+            background: #18191c;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .server-settings-panel h3 {
+            color: #fff;
+            margin-bottom: 10px;
+        }
+        .server-settings-panel button {
+            padding: 8px;
+            margin: 5px 0;
+            background: #5865f2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .server-settings-panel button.danger {
+            background: #f04747;
+        }
+        .log-list, .banned-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+            color: #b9bbbe;
+        }
+        .log-entry, .banned-entry {
+            padding: 5px;
+            border-bottom: 1px solid #40444b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .notification-area {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            z-index: 999;
+        }
+        .notification {
+            background: #40444b;
+            padding: 10px 15px;
+            border-radius: 5px;
+            color: #dcddde;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .notification.success { background: #43b581; }
+        .notification.error { background: #f04747; }
+        .notification button {
+            background: none;
+            border: none;
+            color: #dcddde;
+            font-size: 1.1em;
+            cursor: pointer;
+        }
+        .profile-overlay {
+            background: #2f3136;
+            padding: 20px;
+            border-radius: 8px;
+            width: 500px;
+            max-width: 90%;
+        }
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-right: 20px;
+        }
+        .profile-info h2 {
+            color: #fff;
+            font-size: 1.5em;
+        }
+        .profile-info p {
+            color: #b9bbbe;
+            font-size: 0.9em;
+        }
+        .profile-actions {
+            margin-top: 20px;
+        }
+        .profile-actions button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #5865f2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .avatar-options {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .avatar-option {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s, border 0.2s;
+            object-fit: cover;
+        }
+        .avatar-option:hover {
+            transform: scale(1.1);
+        }
+        .avatar-option.selected {
+            border: 3px solid #5865f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">ChatApp Yükleniyor...</div>
+    </div>
+
+    <div class="app-container" id="appContainer">
+        <div class="server-sidebar">
+            <div class="server-icon" onclick="toggleDMSidebar()">
+                <img src="https://static-00.iconduck.com/assets.00/discord-icon-512x360-uvlqqtlb.png" alt="DM Icon">
+            </div>
+            <div class="server-icon" onclick="switchToGlobalChat()"></div>
+            <div class="server-icon add-server" onclick="showServerActionPrompt()">+</div>
+        </div>
+        <div class="dm-sidebar" id="dmSidebar">
+            <div class="dm-header">
+                <span>Direkt Mesajlar</span>
+                <button class="dm-toggle" onclick="toggleDMSidebar()">⬅</button>
+            </div>
+            <div class="dm-list" id="dmList"></div>
+            <div class="friends-list">
+                <h3>Arkadaşlar</h3>
+                <div id="friendsList"></div>
+            </div>
+        </div>
+        <div class="channel-sidebar" id="channelSidebar">
+            <div class="server-name" id="serverName" oncontextmenu="showServerContextMenu(event)">ChatApp</div>
+            <div class="server-menu" id="serverMenu"></div>
+            <div class="channel-list" id="channelList">
+                <div class="category">
+                    <div class="category-name">Global</div>
+                    <div class="channel-item active" onclick="switchChannel('global')">Global Sohbet</div>
+                </div>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="chat-header" id="chatHeader">ChatApp - Global Sohbet</div>
+            <div class="messages" id="messages"></div>
+            <div class="input-area">
+                <input type="text" id="messageInput" placeholder="Mesaj yaz..." maxlength="100" disabled>
+                <button id="sendButton" disabled>Gönder</button>
+            </div>
+        </div>
+        <div class="user-sidebar">
+            <h3>Aktif Kullanıcılar (<span id="onlineCount">0</span>)</h3>
+            <div class="user-list" id="onlineUsersList"></div>
+            <h3>Toplam Kullanıcılar (<span id="totalUserCount">0</span>)</h3>
+            <div class="user-list" id="allUsersList"></div>
+        </div>
+    </div>
+
+    <div class="overlay" id="usernamePrompt" style="display:none;">
+        <div class="overlay-box">
+            <h2>Kullanıcı Adı ve Avatar Seç</h2>
+            <input type="text" id="usernameInput" placeholder="Kullanıcı Adı (3-20 karakter)" maxlength="20" pattern="[A-Za-z0-9_-]{3,20}" required>
+            <div class="avatar-options">
+                <img src="https://iagq.tmgrup.com.tr/original/17-06/22/user_male_circle_filled1600.png" onclick="selectAvatar(this)" class="avatar-option">
+                <img src="https://forum.donanimarsivi.com/attachments/unbenannt-png.190387/" onclick="selectAvatar(this)" class="avatar-option">
+                <img src="https://i.pinimg.com/564x/55/bf/03/55bf03a9aedfbc2a7af4c2b35a76e741.jpg" onclick="selectAvatar(this)" class="avatar-option">
+                <img src="https://e7.pngegg.com/pngimages/334/867/png-clipart-avatar-profile-pic-female-woman-people-character-person-thumbnail.png" onclick="selectAvatar(this)" class="avatar-option">
+            </div>
+            <button id="setUsernameButton">Giriş Yap</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="serverActionPrompt" style="display:none;">
+        <div class="overlay-box">
+            <h2>Sunucu İşlemleri</h2>
+            <button onclick="showCreateServerPrompt()">Sunucu Oluştur</button>
+            <button onclick="showJoinServerPrompt()">Sunucuya Katıl</button>
+            <button onclick="hideServerActionPrompt()">Kapat</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="createServerPrompt" style="display:none;">
+        <div class="overlay-box">
+            <h2>Sunucu Oluştur</h2>
+            <input type="text" id="newServerNameInput" placeholder="Sunucu Adı">
+            <button onclick="createServerFromPrompt()">Oluştur</button>
+            <button onclick="hideCreateServerPrompt()">Kapat</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="joinServerPrompt" style="display:none;">
+        <div class="overlay-box">
+            <h2>Sunucuya Katıl</h2>
+            <input type="text" id="joinServerCodeInput" placeholder="Davet Kodu">
+            <button onclick="joinServerFromPrompt()">Katıl</button>
+            <button onclick="hideJoinServerPrompt()">Kapat</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="banMessage" style="display:none;">
+        <div class="overlay-box">
+            <h2>Hesabınız Banlandı!</h2>
+            <span>Ban ID: <span id="bannedUserID"></span></span>
+            <span id="bannedMessage">Sohbete katılamazsınız!</span>
+            <button onclick="location.reload()">Yenile</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="serverSettings" style="display:none;">
+        <div class="overlay-box">
+            <h2>Sunucu Ayarları</h2>
+            <input type="text" id="serverNameInput" placeholder="Sunucu Adı" disabled>
+            <div class="server-settings-panel">
+                <h3>Yönetim Paneli</h3>
+                <button onclick="showCreateChannel()">Kanal Oluştur</button>
+                <h3>Banlanan Kullanıcılar</h3>
+                <div class="banned-list" id="bannedList"></div>
+            </div>
+            <button onclick="hideSettings()">Kapat</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="createChannel" style="display:none;">
+        <div class="overlay-box">
+            <h2>Kanal Oluştur</h2>
+            <input type="text" id="channelNameInput" placeholder="Kanal Adı">
+            <select id="categorySelect">
+                <option value="">Kategorisiz</option>
+            </select>
+            <button onclick="createChannel()">Oluştur</button>
+            <button onclick="hideCreateChannel()">Kapat</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="createCategory" style="display:none;">
+        <div class="overlay-box">
+            <h2>Kategori Oluştur</h2>
+            <input type="text" id="categoryNameInput" placeholder="Kategori Adı">
+            <button onclick="createCategory()">Oluştur</button>
+            <button onclick="hideCreateCategory()">Kapat</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="renameChannel" style="display:none;">
+        <div class="overlay-box">
+            <h2>Kanal Adını Değiştir</h2>
+            <input type="text" id="renameChannelInput" placeholder="Yeni Kanal Adı">
+            <button onclick="renameChannel()">Değiştir</button>
+            <button onclick="hideRenameChannel()">Kapat</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="profilePrompt" style="display:none;">
+        <div class="profile-overlay">
+            <div class="profile-header">
+                <img id="profileAvatar" class="profile-avatar" src="">
+                <div class="profile-info">
+                    <h2 id="profileUsername"></h2>
+                    <p>ID: <span id="profileUserID"></span></p>
+                    <p>Katılım: <span id="profileJoinDate"></span></p>
+                </div>
+            </div>
+            <div class="profile-actions">
+                <button onclick="sendFriendRequest()">Arkadaş Ekle</button>
+                <button onclick="startDM()">Mesaj Gönder</button>
+                <button onclick="hideProfile()">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification-area" id="notificationArea"></div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDDjiiyKYZd3j0OadLGJtHgPHee5GMKBk",
+            authDomain: "burakgtxserver.firebaseapp.com",
+            databaseURL: "https://burakgtxserver-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "burakgtxserver",
+            storageBucket: "burakgtxserver.firebasestorage.app",
+            messagingSenderId: "123896236690",
+            appId: "1:123896236690:web:c5189b9fb4e0e19b5d344b",
+            measurementId: "G-7XENYB3MHV"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+
+        let username = "";
+        let avatarURL = "";
+        let lastMessageTime = 0;
+        let isBanned = false;
+        let currentServer = null;
+        let currentChannel = "global";
+        let isServerOwner = false;
+        let serverOwner = null;
+        let userID = null; // Will be set after authentication
+        let currentDMUser = null;
+        let isDMSidebarVisible = false;
+        const isAdmin = () => userID === "Admin";
+
+        function getUserID() {
+            return userID; // Now managed by Firebase Auth
+        }
+
+        function sanitizeInput(input) {
+            return input.replace(/[<>&"']/g, '');
+        }
+
+        // Initialize Firebase Authentication and sign in anonymously
+        window.onload = async function() {
+            try {
+                // Sign in anonymously
+                await firebase.auth().signInAnonymously();
+                firebase.auth().onAuthStateChanged(async (user) => {
+                    if (user) {
+                        userID = user.uid;
+                        // Store userID in localStorage for consistency
+                        localStorage.setItem("userID", userID);
+
+                        await new Promise((resolve) => {
+                            firebase.database().ref('.info/connected').on('value', (snap) => {
+                                if (snap.val() === true) resolve();
+                            });
+                        });
+
+                        await loadUserFromLocalStorage();
+                        await loadJoinedServers();
+                        loadDMs();
+                        loadFriends();
+
+                        document.getElementById('loadingOverlay').style.display = 'none';
+                        document.getElementById('appContainer').style.display = 'flex';
+                        document.getElementById('usernamePrompt').style.display = 'flex';
+                    } else {
+                        showNotification('Kimlik doğrulama başarısız! Lütfen sayfayı yenileyin.', 'error');
+                    }
+                });
+            } catch (error) {
+                console.error('Yükleme hatası:', error);
+                showNotification('Yükleme başarısız! Lütfen sayfayı yenileyin.', 'error');
+            }
+        };
+
+        document.getElementById('setUsernameButton').onclick = function() {
+            const usernameInput = document.getElementById('usernameInput').value.trim();
+            const sanitizedUsername = sanitizeInput(usernameInput);
+
+            if (!sanitizedUsername || sanitizedUsername.length < 3 || sanitizedUsername.length > 20) {
+                showNotification('Kullanıcı adı 3-20 karakter arasında olmalı!', 'error');
+                return;
+            }
+            if (!/^[A-Za-z0-9_-]+$/.test(sanitizedUsername)) {
+                showNotification('Kullanıcı adı yalnızca harf, rakam, _ ve - içerebilir!', 'error');
+                return;
+            }
+            if (!avatarURL) {
+                showNotification('Lütfen bir avatar seçin!', 'error');
+                return;
+            }
+
+            username = sanitizedUsername;
+            document.getElementById('usernamePrompt').style.display = 'none';
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendButton').disabled = false;
+            saveUserToLocalStorage();
+            saveUserToDatabase();
+            checkIfBanned(userID, currentServer || 'global');
+            getMessages();
+            updateOnlineUsers();
+            loadDMs();
+            loadFriends();
+        };
+
+        function selectAvatar(imgElement) {
+            document.querySelectorAll('.avatar-option').forEach(img => img.classList.remove('selected'));
+            imgElement.classList.add('selected');
+            avatarURL = imgElement.src;
+        }
+
+        function toggleDMSidebar() {
+            isDMSidebarVisible = !isDMSidebarVisible;
+            const dmSidebar = document.getElementById('dmSidebar');
+            dmSidebar.style.display = isDMSidebarVisible ? 'flex' : 'none';
+            document.querySelector('.dm-toggle').textContent = isDMSidebarVisible ? '⬅' : '➡';
+        }
+
+        function switchToGlobalChat() {
+            currentServer = null;
+            currentChannel = "global";
+            currentDMUser = null;
+            isServerOwner = false;
+            document.getElementById('serverName').textContent = "ChatApp";
+            document.getElementById('chatHeader').textContent = "ChatApp - Global Sohbet";
+            document.getElementById('channelList').innerHTML = `
+                <div class="category">
+                    <div class="category-name">Global</div>
+                    <div class="channel-item active" onclick="switchChannel('global')">Global Sohbet</div>
+                </div>
+            `;
+            document.getElementById('channelSidebar').style.display = 'flex';
+            document.getElementById('messages').innerHTML = '';
+            getMessages();
+            updateOnlineUsers();
+        }
+
+        function showServerContextMenu(e) {
+            e.preventDefault();
+            const existingMenu = document.querySelector('.server-context-menu');
+            if (existingMenu) existingMenu.remove();
+
+            const menu = document.createElement('div');
+            menu.classList.add('server-context-menu');
+            menu.style.left = `${e.pageX}px`;
+            menu.style.top = `${e.pageY}px`;
+            menu.style.display = 'block';
+            let menuHTML = `<button onclick="copyInviteCode()">Davet Kodunu Kopyala</button>`;
+            if (isServerOwner) {
+                menuHTML += `<button onclick="showCreateChannel()">Kanal Oluştur</button>`;
+            } else if (currentServer) {
+                menuHTML += `<button onclick="leaveServer()">Sunucudan Çık</button>`;
+            }
+            if (isAdmin()) {
+                menuHTML += `<button onclick="showSettings()">Sunucu Ayarları</button>`;
+            }
+            menu.innerHTML = menuHTML;
+            document.body.appendChild(menu);
+            document.addEventListener('click', () => menu.remove(), { once: true });
+        }
+
+        function leaveServer() {
+            if (isServerOwner) {
+                showNotification('Sunucu sahibi sunucudan çıkamaz!', 'error');
+                return;
+            }
+            let joinedServers = JSON.parse(localStorage.getItem('joinedServers') || '[]');
+            joinedServers = joinedServers.filter(s => s.id !== currentServer);
+            localStorage.setItem('joinedServers', JSON.stringify(joinedServers));
+            switchToGlobalChat();
+            showNotification('Sunucudan çıktınız!', 'success');
+        }
+
+        function copyInviteCode() {
+            if (currentServer) {
+                navigator.clipboard.writeText(currentServer).then(() => {
+                    showNotification('Davet kodu kopyalandı!', 'success');
+                });
+            }
+        }
+
+        function showServerActionPrompt() {
+            document.getElementById('serverActionPrompt').style.display = 'flex';
+        }
+
+        function hideServerActionPrompt() {
+            document.getElementById('serverActionPrompt').style.display = 'none';
+        }
+
+        function showCreateServerPrompt() {
+            hideServerActionPrompt();
+            document.getElementById('createServerPrompt').style.display = 'flex';
+        }
+
+        function hideCreateServerPrompt() {
+            document.getElementById('createServerPrompt').style.display = 'none';
+        }
+
+        function createServerFromPrompt() {
+            const name = document.getElementById('newServerNameInput').value.trim();
+            if (name) {
+                const serverID = "server_" + Math.random().toString(36).substring(2, 10);
+                firebase.database().ref(`servers/${serverID}`).set({
+                    name,
+                    owner: userID,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                }).then(() => {
+                    currentServer = serverID;
+                    isServerOwner = true;
+                    document.getElementById('serverName').textContent = name;
+                    document.getElementById('createServerPrompt').style.display = 'none';
+                    document.getElementById('appContainer').style.display = 'flex';
+                    loadServer(serverID);
+                    saveServerToLocalStorage(serverID, name);
+                    logAction(`Sunucu "${name}" oluşturuldu`, userID);
+                }).catch((error) => {
+                    console.error('Sunucu oluşturma hatası:', error);
+                    showNotification('Sunucu oluşturulamadı!', 'error');
+                });
+            } else {
+                showNotification("Lütfen bir sunucu adı girin!", 'error');
+            }
+        }
+
+        function showJoinServerPrompt() {
+            hideServerActionPrompt();
+            document.getElementById('joinServerPrompt').style.display = 'flex';
+        }
+
+        function hideJoinServerPrompt() {
+            document.getElementById('joinServerPrompt').style.display = 'none';
+        }
+
+        function joinServerFromPrompt() {
+            const serverCode = document.getElementById('joinServerCodeInput').value.trim();
+            if (serverCode) {
+                firebase.database().ref(`servers/${serverCode}`).once('value', (snapshot) => {
+                    if (snapshot.exists()) {
+                        currentServer = serverCode;
+                        isServerOwner = snapshot.val().owner === userID;
+                        serverOwner = snapshot.val().owner;
+                        document.getElementById('serverName').textContent = snapshot.val().name;
+                        document.getElementById('joinServerPrompt').style.display = 'none';
+                        document.getElementById('appContainer').style.display = 'flex';
+                        loadServer(serverCode);
+                        saveServerToLocalStorage(serverCode, snapshot.val().name);
+                    } else {
+                        showNotification("Geçersiz sunucu kodu!", 'error');
+                    }
+                });
+            } else {
+                showNotification("Lütfen bir sunucu kodu girin!", 'error');
+            }
+        }
+
+        function showSettings() {
+            if (!isServerOwner && !isAdmin()) {
+                showNotification('Sadece sunucu sahibi veya yönetici sunucu ayarlarına erişebilir!', 'error');
+                return;
+            }
+            document.getElementById('serverSettings').style.display = 'flex';
+            const settingsPanel = document.querySelector('.server-settings-panel');
+            settingsPanel.innerHTML = `
+                <h3>Yönetim Paneli</h3>
+                <button onclick="showCreateChannel()">Kanal Oluştur</button>
+                <h3>Banlanan Kullanıcılar</h3>
+                <div class="banned-list" id="bannedList"></div>
+            `;
+            if (isAdmin()) {
+                settingsPanel.innerHTML += `
+                    <button onclick="showCreateCategory()">Kategori Oluştur</button>
+                    <button class="danger" onclick="deleteServerPrompt()">Sunucuyu Sil</button>
+                `;
+            }
+            updateBannedList();
+        }
+
+        function hideSettings() {
+            document.getElementById('serverSettings').style.display = 'none';
+        }
+
+        function updateBannedList() {
+            const bannedList = document.getElementById('bannedList');
+            bannedList.innerHTML = '';
+            firebase.database().ref(`servers/${currentServer}/banned_users`).once('value', (snapshot) => {
+                const bannedUsers = snapshot.val();
+                if (bannedUsers) {
+                    Object.entries(bannedUsers).forEach(([userId, data]) => {
+                        const div = document.createElement('div');
+                        div.classList.add('banned-entry');
+                        div.innerHTML = `
+                            <span>ID: ${userId} - Sebep: ${data.reason || 'Belirtilmedi'}</span>
+                            ${(isServerOwner || isAdmin()) ? `<button onclick="unbanUser('${userId}')">Banı Kaldır</button>` : ''}
+                        `;
+                        bannedList.appendChild(div);
+                    });
+                }
+            });
+        }
+
+        function banUser(userId) {
+            if (!isServerOwner && !isAdmin()) {
+                showNotification('Bu işlem için yetkiniz yok!', 'error');
+                return;
+            }
+            const reason = prompt("Ban nedeni (isteğe bağlı):") || "Sebep belirtilmedi";
+            const banData = {
+                reason,
+                bannedAt: firebase.database.ServerValue.TIMESTAMP,
+                bannedBy: userID
+            };
+            firebase.database().ref(`servers/${currentServer}/banned_users/${userId}`).set(banData).then(() => {
+                logAction(`${userId} banlandı: ${reason}`, userID);
+                showNotification(`${userId} banlandı: ${reason}`, 'success');
+                if (userId === userID) switchToGlobalChat();
+            });
+        }
+
+        function unbanUser(userId) {
+            if (!isServerOwner && !isAdmin()) return;
+            firebase.database().ref(`servers/${currentServer}/banned_users/${userId}`).remove().then(() => {
+                logAction(`${userId} kullanıcısının banı kaldırıldı`, userID);
+                updateBannedList();
+                showNotification('Kullanıcının banı kaldırıldı!', 'success');
+            });
+        }
+
+        function deleteServerPrompt() {
+            if (!isAdmin()) {
+                showNotification('Bu işlem için yetkiniz yok!', 'error');
+                return;
+            }
+            const menu = document.createElement('div');
+            menu.classList.add('server-context-menu');
+            menu.style.left = `50%`;
+            menu.style.top = `50%`;
+            menu.style.transform = 'translate(-50%, -50%)';
+            menu.style.display = 'block';
+            menu.innerHTML = `
+                <button onclick="deleteServer()">Evet</button>
+                <button onclick="this.parentElement.remove()">Hayır</button>
+            `;
+            document.body.appendChild(menu);
+        }
+
+        function deleteServer() {
+            if (!isAdmin()) return;
+            firebase.database().ref(`servers/${currentServer}`).remove().then(() => {
+                logAction(`Sunucu "${currentServer}" silindi`, userID);
+                localStorage.setItem('joinedServers', JSON.stringify(
+                    JSON.parse(localStorage.getItem('joinedServers') || '[]').filter(s => s.id !== currentServer)
+                ));
+                switchToGlobalChat();
+                showNotification('Sunucu silindi!', 'success');
+            });
+        }
+
+        function showCreateChannel() {
+            if (!isServerOwner && !isAdmin()) {
+                showNotification('Sadece sunucu sahibi veya yönetici kanal oluşturabilir!', 'error');
+                return;
+            }
+            const select = document.getElementById('categorySelect');
+            select.innerHTML = '<option value="">Kategorisiz</option>';
+            if (currentServer) {
+                firebase.database().ref(`servers/${currentServer}/categories`).once('value', (snapshot) => {
+                    const categories = snapshot.val();
+                    if (categories) {
+                        Object.keys(categories).forEach(catId => {
+                            const option = document.createElement('option');
+                            option.value = catId;
+                            option.textContent = categories[catId].name;
+                            select.appendChild(option);
+                        });
+                    }
+                });
+            }
+            document.getElementById('createChannel').style.display = 'flex';
+        }
+
+        function hideCreateChannel() {
+            document.getElementById('createChannel').style.display = 'none';
+        }
+
+        function createChannel() {
+            const name = document.getElementById('channelNameInput').value.trim();
+            const category = document.getElementById('categorySelect').value;
+            if (name && currentServer) {
+                const channelID = "channel_" + Math.random().toString(36).substring(2, 10);
+                firebase.database().ref(`servers/${currentServer}/channels/${channelID}`).set({
+                    name,
+                    category: category || null
+                }).then(() => {
+                    addChannelToList(channelID, name, category);
+                    logAction(`Kanal "${name}" oluşturuldu`, userID);
+                    hideCreateChannel();
+                });
+            }
+        }
+
+        function showCreateCategory() {
+            if (!isAdmin()) {
+                showNotification('Sadece yönetici kategori oluşturabilir!', 'error');
+                return;
+            }
+            document.getElementById('createCategory').style.display = 'flex';
+        }
+
+        function hideCreateCategory() {
+            document.getElementById('createCategory').style.display = 'none';
+        }
+
+        function createCategory() {
+            const name = document.getElementById('categoryNameInput').value.trim();
+            if (name && currentServer) {
+                const categoryID = "category_" + Math.random().toString(36).substring(2, 10);
+                firebase.database().ref(`servers/${currentServer}/categories/${categoryID}`).set({
+                    name
+                }).then(() => {
+                    addCategoryToList(categoryID, name);
+                    logAction(`Kategori "${name}" oluşturuldu`, userID);
+                    hideCreateCategory();
+                });
+            }
+        }
+
+        function showChannelContextMenu(e, channelID) {
+            if (!isServerOwner && !isAdmin()) return;
+            e.preventDefault();
+            const existingMenu = document.querySelector('.channel-context-menu');
+            if (existingMenu) existingMenu.remove();
+
+            const menu = document.createElement('div');
+            menu.classList.add('channel-context-menu');
+            menu.style.left = `${e.pageX}px`;
+            menu.style.top = `${e.pageY}px`;
+            menu.style.display = 'block';
+            menu.innerHTML = `
+                <button onclick="showRenameChannelPrompt('${channelID}')">Kanal Adını Değiştir</button>
+                <button onclick="deleteChannel('${channelID}')">Kanalı Sil</button>
+            `;
+            document.body.appendChild(menu);
+            document.addEventListener('click', () => menu.remove(), { once: true });
+        }
+
+        function showRenameChannelPrompt(channelID) {
+            selectedChannelID = channelID;
+            document.getElementById('renameChannelInput').value = '';
+            document.getElementById('renameChannel').style.display = 'flex';
+        }
+
+        function hideRenameChannel() {
+            document.getElementById('renameChannel').style.display = 'none';
+            selectedChannelID = null;
+        }
+
+        function renameChannel() {
+            const newName = document.getElementById('renameChannelInput').value.trim();
+            if (newName && selectedChannelID && currentServer) {
+                firebase.database().ref(`servers/${currentServer}/channels/${selectedChannelID}`).update({
+                    name: newName
+                }).then(() => {
+                    document.getElementById(selectedChannelID).textContent = newName;
+                    logAction(`Kanal "${selectedChannelID}" adı "${newName}" olarak değiştirildi`, userID);
+                    hideRenameChannel();
+                });
+            }
+        }
+
+        function deleteChannel(channelID) {
+            if (!isServerOwner && !isAdmin()) return;
+            const menu = document.createElement('div');
+            menu.classList.add('channel-context-menu');
+            menu.style.left = `50%`;
+            menu.style.top = `50%`;
+            menu.style.transform = 'translate(-50%, -50%)';
+            menu.style.display = 'block';
+            menu.innerHTML = `
+                <button onclick="confirmDeleteChannel('${channelID}')">Evet</button>
+                <button onclick="this.parentElement.remove()">Hayır</button>
+            `;
+            document.body.appendChild(menu);
+        }
+
+        function confirmDeleteChannel(channelID) {
+            firebase.database().ref(`servers/${currentServer}/channels/${channelID}`).remove().then(() => {
+                document.getElementById(channelID)?.remove();
+                logAction(`Kanal "${channelID}" silindi`, userID);
+                if (currentChannel === channelID) switchChannel('global');
+            });
+        }
+
+        function addChannelToList(channelID, name, categoryID) {
+            const channelList = document.getElementById('channelList');
+            let categoryDiv = categoryID ? document.getElementById(`category-${categoryID}`) : channelList;
+            if (!categoryDiv) {
+                categoryDiv = document.createElement('div');
+                categoryDiv.classList.add('category');
+                channelList.appendChild(categoryDiv);
+            }
+            const channelItem = document.createElement('div');
+            channelItem.classList.add('channel-item');
+            channelItem.id = channelID;
+            channelItem.textContent = name;
+            channelItem.onclick = () => switchChannel(channelID);
+            channelItem.oncontextmenu = (e) => showChannelContextMenu(e, channelID);
+            categoryDiv.appendChild(channelItem);
+        }
+
+        function addCategoryToList(categoryID, name) {
+            const channelList = document.getElementById('channelList');
+            const categoryDiv = document.createElement('div');
+            categoryDiv.classList.add('category');
+            categoryDiv.id = `category-${categoryID}`;
+            categoryDiv.innerHTML = `<div class="category-name">${name}</div>`;
+            channelList.appendChild(categoryDiv);
+        }
+
+        function switchChannel(channelID) {
+            currentChannel = channelID;
+            currentDMUser = null;
+            document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
+            document.getElementById(channelID)?.classList.add('active');
+            document.getElementById('chatHeader').textContent = `ChatApp - ${channelID === 'global' ? 'Global Sohbet' : channelID}`;
+            document.getElementById('messages').innerHTML = '';
+            getMessages();
+            updateOnlineUsers();
+        }
+
+        function loadServer(serverID) {
+            firebase.database().ref(`servers/${serverID}`).once('value', (snapshot) => {
+                serverOwner = snapshot.val().owner;
+                isServerOwner = serverOwner === userID;
+            });
+            firebase.database().ref(`servers/${serverID}/channels`).once('value', (snapshot) => {
+                const channels = snapshot.val();
+                document.getElementById('channelList').innerHTML = '';
+                if (channels) {
+                    Object.entries(channels).forEach(([channelID, channel]) => {
+                        addChannelToList(channelID, channel.name, channel.category);
+                    });
+                }
+            });
+            firebase.database().ref(`servers/${serverID}/categories`).once('value', (snapshot) => {
+                const categories = snapshot.val();
+                if (categories) {
+                    Object.entries(categories).forEach(([categoryID, category]) => {
+                        addCategoryToList(categoryID, category.name);
+                    });
+                }
+            });
+            document.getElementById('channelSidebar').style.display = 'flex';
+            getMessages();
+            updateOnlineUsers();
+        }
+
+        function saveUserToLocalStorage() {
+            localStorage.setItem('username', username);
+            localStorage.setItem('avatarURL', avatarURL);
+        }
+
+        function saveUserToDatabase() {
+            firebase.database().ref(`users/${userID}`).set({
+                username,
+                avatar: avatarURL,
+                joinedAt: firebase.database.ServerValue.TIMESTAMP
+            });
+        }
+
+        function loadUserFromLocalStorage() {
+            return new Promise((resolve) => {
+                username = localStorage.getItem('username') || '';
+                avatarURL = localStorage.getItem('avatarURL') || '';
+                if (username && avatarURL) {
+                    document.getElementById('usernamePrompt').style.display = 'none';
+                    document.getElementById('messageInput').disabled = false;
+                    document.getElementById('sendButton').disabled = false;
+                    saveUserToDatabase();
+                    checkIfBanned(userID, currentServer || 'global');
+                    getMessages();
+                    updateOnlineUsers();
+                    loadDMs();
+                    loadFriends();
+                }
+                resolve();
+            });
+        }
+
+        function saveServerToLocalStorage(serverID, serverName) {
+            let joinedServers = JSON.parse(localStorage.getItem('joinedServers')) || [];
+            if (!joinedServers.some(server => server.id === serverID)) {
+                joinedServers.push({ id: serverID, name: serverName });
+                localStorage.setItem('joinedServers', JSON.stringify(joinedServers));
+            }
+        }
+
+        function loadJoinedServers() {
+            return new Promise((resolve) => {
+                const joinedServers = JSON.parse(localStorage.getItem('joinedServers')) || [];
+                const serverSidebar = document.querySelector('.server-sidebar');
+                joinedServers.forEach(server => {
+                    const serverIcon = document.createElement('div');
+                    serverIcon.classList.add('server-icon');
+                    serverIcon.title = server.name;
+                    serverIcon.onclick = () => {
+                        currentServer = server.id;
+                        currentDMUser = null;
+                        isServerOwner = false;
+                        document.getElementById('serverName').textContent = server.name;
+                        loadServer(server.id);
+                    };
+                    serverIcon.oncontextmenu = (e) => showServerContextMenu(e);
+                    serverSidebar.insertBefore(serverIcon, document.querySelector('.add-server'));
+                });
+                resolve();
+            });
+        }
+
+        function checkIfBanned(userID, serverID) {
+            const bannedUsersRef = firebase.database().ref(`servers/${serverID}/banned_users/${userID}`);
+            bannedUsersRef.on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    const bannedUser = snapshot.val();
+                    document.getElementById('banMessage').style.display = "flex";
+                    document.getElementById('bannedUserID').textContent = userID;
+                    document.getElementById('bannedMessage').textContent = bannedUser.reason || "Sohbete katılamazsınız!";
+                    isBanned = true;
+                    document.getElementById('messageInput').disabled = true;
+                    document.getElementById('sendButton').disabled = true;
+                    if (currentServer === serverID) switchToGlobalChat();
+                } else {
+                    isBanned = false;
+                }
+            });
+        }
+
+        function getMessages() {
+            let messagesRef;
+            if (currentDMUser) {
+                const dmKey = [userID, currentDMUser].sort().join('_');
+                messagesRef = firebase.database().ref(`dms/${dmKey}/messages`).limitToLast(50);
+            } else {
+                messagesRef = firebase.database().ref(`servers/${currentServer || 'global'}/channels/${currentChannel}/messages`).limitToLast(50);
+            }
+            messagesRef.off();
+            messagesRef.on('child_added', (snapshot) => {
+                const message = snapshot.val();
+                displayMessage(message.username, message.text, message.avatar, message.timestamp, message.userID, snapshot.key);
+            });
+            messagesRef.on('child_removed', (snapshot) => {
+                const messageElement = document.getElementById(snapshot.key);
+                if (messageElement) messageElement.remove();
+            });
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const messageText = sanitizeInput(messageInput.value.trim());
+
+            if (messageText === "" || messageText.length > 100) {
+                showNotification("Mesaj 100 karakterden uzun olamaz.", 'error');
+                return;
+            }
+
+            const currentTime = new Date().getTime();
+            if (currentTime - lastMessageTime < 2000) {
+                showNotification("Biraz bekleyin!", 'error');
+                return;
+            }
+
+            lastMessageTime = currentTime;
+
+            let messagesRef;
+            if (currentDMUser) {
+                const dmKey = [userID, currentDMUser].sort().join('_');
+                messagesRef = firebase.database().ref(`dms/${dmKey}/messages`);
+                firebase.database().ref(`users/${userID}/blocked/${currentDMUser}`).once('value', (snap) => {
+                    if (snap.exists()) {
+                        showNotification('Bu kullanıcıyı engellediniz!', 'error');
+                        return;
+                    }
+                    firebase.database().ref(`users/${currentDMUser}/blocked/${userID}`).once('value', (snap2) => {
+                        if (snap2.exists()) {
+                            showNotification('Bu kullanıcı sizi engelledi!', 'error');
+                            return;
+                        }
+                        const newMessage = {
+                            userID: userID,
+                            username: username,
+                            text: messageText,
+                            avatar: avatarURL,
+                            timestamp: currentTime
+                        };
+                        messagesRef.push(newMessage);
+                        firebase.database().ref(`dms/${dmKey}/userAccess`).set({
+                            [userID]: true,
+                            [currentDMUser]: true
+                        });
+                        messageInput.value = '';
+                        updateDMList(currentDMUser);
+                    });
+                });
+            } else {
+                messagesRef = firebase.database().ref(`servers/${currentServer || 'global'}/channels/${currentChannel}/messages`);
+                const newMessage = {
+                    userID: userID,
+                    username: username,
+                    text: messageText,
+                    avatar: avatarURL,
+                    timestamp: currentTime
+                };
+                if (!isBanned) {
+                    messagesRef.push(newMessage);
+                    messageInput.value = '';
+                }
+            }
+        }
+
+        function displayMessage(username, text, avatar, timestamp, msgUserID, messageID) {
+            const messagesContainer = document.getElementById('messages');
+            const messageElement = document.createElement('div');
+            const messageTime = new Date(timestamp).toLocaleString();
+            messageElement.classList.add('message');
+            messageElement.id = messageID;
+            messageElement.innerHTML = `
+                <img src="${avatar}" class="message-avatar">
+                <div class="message-content">
+                    <span class="message-username">${username}</span>
+                    <span class="message-id">ID: ${msgUserID}</span>
+                    <span class="message-timestamp">${messageTime}</span>
+                    <div class="message-text">${text}</div>
+                </div>
+                <div class="message-actions">
+                    ${msgUserID === userID ? `<button class="edit" onclick="editMessage('${messageID}', '${text}')">Düzenle</button>` : ''}
+                    ${msgUserID === userID || isAdmin() ? `<button onclick="deleteMessage('${messageID}')">Sil</button>` : ''}
+                </div>
+            `;
+            messageElement.oncontextmenu = (e) => showUserContextMenu(e, msgUserID);
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function deleteMessage(messageID) {
+            const menu = document.createElement('div');
+            menu.classList.add('user-context-menu');
+            menu.style.left = `50%`;
+            menu.style.top = `50%`;
+            menu.style.transform = 'translate(-50%, -50%)';
+            menu.style.display = 'block';
+            menu.innerHTML = `
+                <button onclick="confirmDeleteMessage('${messageID}')">Evet</button>
+                <button onclick="this.parentElement.remove()">Hayır</button>
+            `;
+            document.body.appendChild(menu);
+        }
+
+        function confirmDeleteMessage(messageID) {
+            let refPath = currentDMUser 
+                ? `dms/${[userID, currentDMUser].sort().join('_')}/messages/${messageID}`
+                : `servers/${currentServer || 'global'}/channels/${currentChannel}/messages/${messageID}`;
+            firebase.database().ref(refPath).remove();
+        }
+
+        function editMessage(messageID, currentText) {
+            const newText = prompt("Mesajı düzenle:", currentText);
+            if (newText && newText.trim() !== "" && newText.length <= 100) {
+                let refPath = currentDMUser 
+                    ? `dms/${[userID, currentDMUser].sort().join('_')}/messages/${messageID}`
+                    : `servers/${currentServer || 'global'}/channels/${currentChannel}/messages/${messageID}`;
+                firebase.database().ref(refPath).update({ text: sanitizeInput(newText.trim()) });
+            }
+        }
+
+        function checkIfMuted(userID, callback) {
+            if (!currentServer) return callback(false);
+            firebase.database().ref(`servers/${currentServer}/muted_users/${userID}`).once('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    const muteData = snapshot.val();
+                    const now = new Date().getTime();
+                    if (!muteData.mutedUntil || now < muteData.mutedUntil) {
+                        callback(true);
+                    } else {
+                        firebase.database().ref(`servers/${currentServer}/muted_users/${userID}`).remove();
+                        callback(false);
+                    }
+                } else {
+                    callback(false);
+                }
+            });
+        }
+
+        function showNotification(message, type, buttons = []) {
+            const notification = document.createElement('div');
+            notification.classList.add('notification', type);
+            let buttonHTML = buttons.map(btn => `<button onclick="${btn.action.toString().replace(/"/g, '"')}">${btn.text}</button>`).join('');
+            notification.innerHTML = `
+                <span>${message}</span>
+                ${buttonHTML}
+                <button onclick="this.parentElement.remove()">✕</button>
+            `;
+            document.getElementById('notificationArea').appendChild(notification);
+            setTimeout(() => notification.remove(), 10000);
+        }
+
+        function updateOnlineUsers() {
+            const onlineUsersRef = firebase.database().ref(`servers/${currentServer || 'global'}/online_users`);
+            const allUsersRef = firebase.database().ref(`servers/${currentServer || 'global'}/users`);
+
+            onlineUsersRef.child(userID).set({
+                username,
+                avatar: avatarURL,
+                lastActive: firebase.database.ServerValue.TIMESTAMP
+            });
+
+            allUsersRef.child(userID).set({
+                username,
+                avatar: avatarURL,
+                joinedAt: firebase.database.ServerValue.TIMESTAMP
+            });
+
+            onlineUsersRef.on('value', (snapshot) => {
+                const onlineUsers = snapshot.val() || {};
+                const onlineUsersList = document.getElementById('onlineUsersList');
+                const onlineCount = document.getElementById('onlineCount');
+                onlineUsersList.innerHTML = '';
+
+                const uniqueOnlineUsers = new Map();
+                Object.entries(onlineUsers).forEach(([userId, user]) => {
+                    const isOnline = (new Date().getTime() - user.lastActive) < 300000;
+                    if (isOnline) {
+                        uniqueOnlineUsers.set(userId, user);
+                        const userElement = document.createElement('div');
+                        userElement.classList.add('user');
+                        userElement.innerHTML = `
+                            <img src="${user.avatar}" alt="${user.username}">
+                            <span>${user.username}</span>
+                            <div class="status-dot online"></div>
+                            ${userId === serverOwner ? `<img src="https://png.pngtree.com/png-clipart/20220530/original/pngtree-crown-png-and-vector-png-image_7770051.png" class="crown-icon">` : ''}
+                        `;
+                        userElement.oncontextmenu = (e) => showUserContextMenu(e, userId);
+                        onlineUsersList.appendChild(userElement);
+                    }
+                });
+                onlineCount.textContent = uniqueOnlineUsers.size;
+
+                updateAllUsers(allUsersRef, uniqueOnlineUsers);
+            });
+
+            setInterval(() => {
+                onlineUsersRef.child(userID).update({ lastActive: firebase.database.ServerValue.TIMESTAMP });
+            }, 60000);
+            onlineUsersRef.child(userID).onDisconnect().remove();
+        }
+
+        function updateAllUsers(allUsersRef, onlineUsersMap) {
+            allUsersRef.once('value', (snapshot) => {
+                const allUsers = snapshot.val() || {};
+                const allUsersList = document.getElementById('allUsersList');
+                const totalUserCount = document.getElementById('totalUserCount');
+                allUsersList.innerHTML = '';
+
+                const uniqueAllUsers = new Map();
+                Object.entries(allUsers).forEach(([userId, user]) => {
+                    uniqueAllUsers.set(userId, user);
+                    const isOnline = onlineUsersMap.has(userId);
+                    const userElement = document.createElement('div');
+                    userElement.classList.add('user');
+                    userElement.innerHTML = `
+                        <img src="${user.avatar}" alt="${user.username}">
+                        <span>${user.username}</span>
+                        <div class="status-dot ${isOnline ? 'online' : 'offline'}"></div>
+                        ${userId === serverOwner ? `<img src="https://png.pngtree.com/png-clipart/20220530/original/pngtree-crown-png-and-vector-png-image_7770051.png" class="crown-icon">` : ''}
+                    `;
+                    userElement.oncontextmenu = (e) => showUserContextMenu(e, userId);
+                    allUsersList.appendChild(userElement);
+                });
+                totalUserCount.textContent = uniqueAllUsers.size;
+            });
+        }
+
+        function showUserContextMenu(e, targetUserID) {
+            e.preventDefault();
+            const existingMenu = document.querySelector('.user-context-menu');
+            if (existingMenu) existingMenu.remove();
+
+            const menu = document.createElement('div');
+            menu.classList.add('user-context-menu');
+            menu.style.left = `${e.pageX}px`;
+            menu.style.top = `${e.pageY}px`;
+            menu.style.display = 'block';
+            let menuHTML = `
+                <button onclick="showProfile('${targetUserID}')">Profil</button>
+                <button onclick="startDM('${targetUserID}')">Mesaj Gönder</button>
+                <button onclick="sendFriendRequest('${targetUserID}')">Arkadaş Ekle</button>
+            `;
+            firebase.database().ref(`users/${userID}/blocked/${targetUserID}`).once('value', (snap) => {
+                if (snap.exists()) {
+                    menuHTML += `<button onclick="unblockUser('${targetUserID}')">Engeli Kaldır</button>`;
+                } else {
+                    menuHTML += `<button onclick="blockUser('${targetUserID}')">Engelle</button>`;
+                }
+                if (currentServer && (isServerOwner || isAdmin()) && targetUserID !== userID) {
+                    menuHTML += `<button onclick="banUser('${targetUserID}')">Banla</button>`;
+                }
+                if (targetUserID !== userID) {
+                    menuHTML += `<button onclick="removeFriend('${targetUserID}')">Arkadaşı Çıkar</button>`;
+                }
+                menu.innerHTML = menuHTML;
+                document.body.appendChild(menu);
+                document.addEventListener('click', () => menu.remove(), { once: true });
+            });
+        }
+
+        function blockUser(targetUserID) {
+            if (targetUserID === userID) {
+                showNotification('Kendinizi engelleyemezsiniz!', 'error');
+                return;
+            }
+            firebase.database().ref(`users/${userID}/blocked/${targetUserID}`).set({
+                blockedAt: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                removeFriend(targetUserID);
+                showNotification(`${targetUserID} engellendi!`, 'success');
+            });
+        }
+
+        function unblockUser(targetUserID) {
+            firebase.database().ref(`users/${userID}/blocked/${targetUserID}`).remove().then(() => {
+                showNotification(`${targetUserID} kullanıcısının engeli kaldırıldı!`, 'success');
+            });
+        }
+
+        function showProfile(targetUserID) {
+            firebase.database().ref(`servers/${currentServer || 'global'}/users/${targetUserID}`).once('value', (snapshot) => {
+                const userData = snapshot.val();
+                if (userData) {
+                    document.getElementById('profileAvatar').src = userData.avatar;
+                    document.getElementById('profileUsername').textContent = userData.username;
+                    document.getElementById('profileUserID').textContent = targetUserID;
+                    document.getElementById('profileJoinDate').textContent = new Date(userData.joinedAt || Date.now()).toLocaleString();
+                    document.getElementById('profilePrompt').style.display = 'flex';
+                }
+            });
+        }
+
+        function hideProfile() {
+            document.getElementById('profilePrompt').style.display = 'none';
+        }
+
+        function startDM(targetUserID) {
+            if (targetUserID === userID) {
+                showNotification('Kendinize mesaj gönderemezsiniz!', 'error');
+                return;
+            }
+            firebase.database().ref(`users/${userID}/blocked/${targetUserID}`).once('value', (snap) => {
+                if (snap.exists()) {
+                    showNotification('Bu kullanıcıyı engellediniz!', 'error');
+                    return;
+                }
+                firebase.database().ref(`users/${targetUserID}/blocked/${userID}`).once('value', (snap2) => {
+                    if (snap2.exists()) {
+                        showNotification('Bu kullanıcı sizi engelledi!', 'error');
+                        return;
+                    }
+                    currentDMUser = targetUserID;
+                    currentServer = null;
+                    currentChannel = null;
+                    document.getElementById('channelSidebar').style.display = 'none';
+                    document.getElementById('chatHeader').textContent = `DM - ${targetUserID}`;
+                    document.getElementById('messages').innerHTML = '';
+                    getMessages();
+                    updateDMList(targetUserID);
+                    hideProfile();
+                });
+            });
+        }
+
+        function loadDMs() {
+            firebase.database().ref(`dms`).orderByChild(`userAccess/${userID}`).equalTo(true).on('value', (snapshot) => {
+                const dms = snapshot.val();
+                const dmList = document.getElementById('dmList');
+                dmList.innerHTML = '';
+                if (dms) {
+                    Object.entries(dms).forEach(([dmKey, dm]) => {
+                        const users = dmKey.split('_');
+                        if (users.includes(userID)) {
+                            const otherUserID = users.find(id => id !== userID);
+                            firebase.database().ref(`servers/global/users/${otherUserID}`).once('value', (userSnap) => {
+                                const userData = userSnap.val();
+                                if (userData) {
+                                    const dmItem = document.createElement('div');
+                                    dmItem.classList.add('dm-item');
+                                    dmItem.textContent = userData.username;
+                                    dmItem.onclick = () => startDM(otherUserID);
+                                    dmList.appendChild(dmItem);
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        function updateDMList(targetUserID) {
+            const dmList = document.getElementById('dmList');
+            let exists = false;
+            Array.from(dmList.children).forEach(item => {
+                if (item.textContent === targetUserID) exists = true;
+            });
+            if (!exists) {
+                firebase.database().ref(`servers/global/users/${targetUserID}`).once('value', (snapshot) => {
+                    const userData = snapshot.val();
+                    if (userData) {
+                        const dmItem = document.createElement('div');
+                        dmItem.classList.add('dm-item');
+                        dmItem.textContent = userData.username;
+                        dmItem.onclick = () => startDM(targetUserID);
+                        dmList.appendChild(dmItem);
+                    }
+                });
+            }
+            const dmKey = [userID, targetUserID].sort().join('_');
+            firebase.database().ref(`dms/${dmKey}/userAccess`).set({
+                [userID]: true,
+                [targetUserID]: true
+            });
+        }
+
+        function sendFriendRequest(targetUserID) {
+            if (targetUserID === userID) {
+                showNotification('Kendinize arkadaşlık isteği gönderemezsiniz!', 'error');
+                return;
+            }
+            firebase.database().ref(`users/${userID}/blocked/${targetUserID}`).once('value', (snap) => {
+                if (snap.exists()) {
+                    showNotification('Bu kullanıcıyı engellediniz!', 'error');
+                    return;
+                }
+                firebase.database().ref(`users/${targetUserID}/blocked/${userID}`).once('value', (snap2) => {
+                    if (snap2.exists()) {
+                        showNotification('Bu kullanıcı sizi engelledi!', 'error');
+                        return;
+                    }
+                    firebase.database().ref(`users/${targetUserID}/friend_requests/${userID}`).set({
+                        username,
+                        avatar: avatarURL,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    }).then(() => {
+                        showNotification(`${targetUserID} kullanıcısına arkadaşlık isteği gönderildi!`, 'success');
+                        hideProfile();
+                    });
+                });
+            });
+        }
+
+        function loadFriends() {
+            firebase.database().ref(`users/${userID}/friends`).on('value', (snapshot) => {
+                const friends = snapshot.val();
+                const friendsList = document.getElementById('friendsList');
+                friendsList.innerHTML = '';
+                if (friends) {
+                    Object.entries(friends).forEach(([friendID, friendData]) => {
+                        const friendItem = document.createElement('div');
+                        friendItem.classList.add('friend-item');
+                        friendItem.textContent = friendData.username;
+                        friendItem.onclick = () => startDM(friendID);
+                        friendsList.appendChild(friendItem);
+                    });
+                }
+            });
+
+            firebase.database().ref(`users/${userID}/friend_requests`).on('value', (snapshot) => {
+                const requests = snapshot.val();
+                if (requests) {
+                    Object.entries(requests).forEach(([requesterID, request]) => {
+                        showNotification(`${request.username} size arkadaşlık isteği gönderdi!`, 'success', [
+                            { text: 'Kabul Et', action: () => acceptFriendRequest(requesterID) },
+                            { text: 'Reddet', action: () => rejectFriendRequest(requesterID) }
+                        ]);
+                    });
+                }
+            });
+        }
+
+        function acceptFriendRequest(requesterID) {
+            firebase.database().ref(`users/${userID}/friends/${requesterID}`).set({
+                username: username,
+                avatar: avatarURL
+            });
+            firebase.database().ref(`users/${requesterID}/friends/${userID}`).set({
+                username: username,
+                avatar: avatarURL
+            });
+            firebase.database().ref(`users/${userID}/friend_requests/${requesterID}`).remove();
+            showNotification(`${requesterID} ile arkadaş oldunuz!`, 'success');
+        }
+
+        function rejectFriendRequest(requesterID) {
+            firebase.database().ref(`users/${userID}/friend_requests/${requesterID}`).remove();
+            showNotification(`${requesterID} kullanıcısının isteği reddedildi.`, 'success');
+        }
+
+        function removeFriend(targetUserID) {
+            firebase.database().ref(`users/${userID}/friends/${targetUserID}`).remove();
+            firebase.database().ref(`users/${targetUserID}/friends/${userID}`).remove();
+            showNotification(`${targetUserID} arkadaş listesinden çıkarıldı!`, 'success');
+        }
+
+        function logAction(action, userId) {
+            if (!currentServer) return;
+            const logRef = firebase.database().ref(`servers/${currentServer}/logs`).push();
+            logRef.set({
+                action,
+                userId,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+        }
+
+        document.getElementById('sendButton').onclick = function() {
+            checkIfMuted(userID, (isMuted) => {
+                if (!isMuted) sendMessage();
+                else showNotification("Susturulmuşsunuz!", 'error');
+            });
+        };
+        document.getElementById('messageInput').addEventListener("keypress", (event) => {
+            if (event.key === "Enter") {
+                checkIfMuted(userID, (isMuted) => {
+                    if (!isMuted) sendMessage();
+                    else showNotification("Susturulmuşsunuz!", 'error');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
