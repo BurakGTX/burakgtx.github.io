@@ -141,6 +141,24 @@
             border-radius: 8px;
             margin-bottom: 0.5rem;
         }
+        .tts-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            padding: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .tts-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .tts-button svg {
+            width: 16px;
+            height: 16px;
+            fill: #c9d1d9;
+        }
     </style>
 </head>
 <body>
@@ -159,7 +177,7 @@
             </button>
         </div>
         <div id="chatArea" class="chat-area">
-            <div class="text-center text-gray-400 italic mt-10">GtX ile sohbet etmeye başla!</div>
+            <div id="initialMessage" class="text-center text-gray-400 italic mt-10">GtX ile sohbet etmeye başla!</div>
         </div>
         <div class="input-area">
             <button id="imageUploadButton" class="p-3 bg-purple-600 text-white rounded-lg shadow-md hover:bg-purple-700 transition-colors duration-200" title="Görsel Yükle">
@@ -178,33 +196,179 @@
     </div>
 
     <script>
-        // DOM Elements
+        // DOM elemanları
         const chatArea = document.getElementById('chatArea');
         const inputField = document.getElementById('inputField');
         const sendButton = document.getElementById('sendButton');
         const newChatButton = document.getElementById('newChatButton');
         const imageUploadButton = document.getElementById('imageUploadButton');
         const imageUploadInput = document.getElementById('imageUploadInput');
+        const initialMessage = document.getElementById('initialMessage');
 
-        // State variables
+        // State değişkenleri
         let isLoading = false;
         let selectedImage = null;
         let selectedImageMimeType = null;
         let messages = [];
 
-        // Scroll to the bottom of the chat area
+        // Sayfa yüklendiğinde sohbet geçmişini localStorage'dan çek
+        window.addEventListener('load', () => {
+            const savedMessages = localStorage.getItem('gtxChatHistory');
+            if (savedMessages) {
+                messages = JSON.parse(savedMessages);
+                renderMessages();
+            } else {
+                initialMessage.style.display = 'block';
+            }
+        });
+
+        // Sohbet geçmişini localStorage'a kaydet
+        const saveChatHistory = () => {
+            localStorage.setItem('gtxChatHistory', JSON.stringify(messages));
+        };
+
+        // Sohbet alanını temizler ve mesajları yeniden çizer
+        const renderMessages = () => {
+            chatArea.innerHTML = ''; // Önce tüm mesajları temizle
+            initialMessage.style.display = 'none';
+
+            if (messages.length === 0) {
+                 initialMessage.style.display = 'block';
+                 return;
+            }
+
+            messages.forEach(msg => {
+                appendMessage(msg.sender, msg.text, msg.hasImage);
+            });
+            scrollToBottom();
+        };
+
+        // Mesajı sohbet alanının en altına kaydırır
         const scrollToBottom = () => {
             chatArea.scrollTop = chatArea.scrollHeight;
         };
 
-        // Render a new message to the chat area
+        // Base64'ten ArrayBuffer'a dönüştürme fonksiyonu
+        const base64ToArrayBuffer = (base64) => {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        };
+        
+        // PCM verisini WAV formatına dönüştürme fonksiyonu
+        const pcmToWav = (pcmData, sampleRate) => {
+            const wavData = new ArrayBuffer(44 + pcmData.length * 2);
+            const view = new DataView(wavData);
+            let offset = 0;
+
+            const writeString = (str) => {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(offset++, str.charCodeAt(i));
+                }
+            };
+
+            // WAV başlığı
+            writeString('RIFF'); // ChunkID
+            view.setUint32(offset, 36 + pcmData.length * 2, true); // ChunkSize
+            offset += 4;
+            writeString('WAVE'); // Format
+            writeString('fmt '); // Subchunk1ID
+            view.setUint32(offset, 16, true); // Subchunk1Size
+            offset += 4;
+            view.setUint16(offset, 1, true); // AudioFormat (1 = PCM)
+            offset += 2;
+            view.setUint16(offset, 1, true); // NumChannels
+            offset += 2;
+            view.setUint32(offset, sampleRate, true); // SampleRate
+            offset += 4;
+            view.setUint32(offset, sampleRate * 2, true); // ByteRate
+            offset += 4;
+            view.setUint16(offset, 2, true); // BlockAlign
+            offset += 2;
+            view.setUint16(offset, 16, true); // BitsPerSample
+            offset += 2;
+            writeString('data'); // Subchunk2ID
+            view.setUint32(offset, pcmData.length * 2, true); // Subchunk2Size
+            offset += 4;
+
+            // Ses verisi
+            for (let i = 0; i < pcmData.length; i++) {
+                view.setInt16(offset, pcmData[i], true);
+                offset += 2;
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        };
+        
+        // TTS API çağrısı
+        const speakMessage = async (textToSpeak) => {
+            try {
+                const payload = {
+                    contents: [{
+                        parts: [{ text: textToSpeak }]
+                    }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: { voiceName: "Kore" }
+                            }
+                        }
+                    },
+                    model: "gemini-2.5-flash-preview-tts"
+                };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`TTS API hatası: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const audioData = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+                const mimeType = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                    const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const pcm16 = new Int16Array(pcmData);
+                    const wavBlob = pcmToWav(pcm16, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+
+                    audio.onended = () => {
+                        URL.revokeObjectURL(audioUrl);
+                    };
+                } else {
+                    throw new Error("TTS yanıtı geçerli ses verisi içermiyor.");
+                }
+            } catch (error) {
+                console.error("TTS hatası:", error);
+                alert('Sesli yanıt oluşturulurken bir hata oluştu.');
+            }
+        };
+
+        // Sohbet alanına yeni bir mesaj ekler
         const appendMessage = (sender, text, hasImage = false) => {
             const messageContainer = document.createElement('div');
             messageContainer.className = `message-container ${sender}`;
-
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${sender}`;
 
+            // Bot mesajları için özel içerik ve aksiyon butonları
             if (sender === 'bot') {
                 const codeBlockRegex = /```(.*?)```/gs;
                 const parts = text.split(codeBlockRegex);
@@ -238,7 +402,18 @@
                     messageDiv.appendChild(summarizeButton);
                 }
 
-            } else {
+                // Seslendir butonu
+                const ttsButton = document.createElement('button');
+                ttsButton.className = 'tts-button';
+                ttsButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.81 5 3.54 5 6.71s-2.11 5.9-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                    </svg>
+                `;
+                ttsButton.onclick = () => speakMessage(text);
+                messageDiv.appendChild(ttsButton);
+
+            } else { // Kullanıcı mesajları
                 if (hasImage && selectedImage) {
                     const img = document.createElement('img');
                     img.src = `data:${selectedImageMimeType};base64,${selectedImage}`;
@@ -254,7 +429,7 @@
             scrollToBottom();
         };
 
-        // Show a loading indicator
+        // Yükleme göstergesini gösterir
         const showLoading = () => {
             const loadingContainer = document.createElement('div');
             loadingContainer.id = 'loadingIndicator';
@@ -272,7 +447,7 @@
             scrollToBottom();
         };
 
-        // Remove the loading indicator
+        // Yükleme göstergesini kaldırır
         const hideLoading = () => {
             const loadingIndicator = document.getElementById('loadingIndicator');
             if (loadingIndicator) {
@@ -280,7 +455,7 @@
             }
         };
 
-        // Main message sending function
+        // Ana mesaj gönderme fonksiyonu
         const sendMessage = async (customPrompt = null) => {
             const userInput = inputField.value.trim();
             const promptText = customPrompt || userInput;
@@ -288,15 +463,17 @@
             if (isLoading || (!promptText && !selectedImage)) {
                 return;
             }
-
-            // Append user message
+            
+            // Kullanıcı mesajını ekle ve state'i güncelle
             appendMessage('user', promptText, !!selectedImage);
             messages.push({ sender: 'user', text: promptText, hasImage: !!selectedImage });
+            saveChatHistory();
 
             inputField.value = '';
             isLoading = true;
             sendButton.disabled = true;
             inputField.disabled = true;
+            imageUploadButton.disabled = true;
             showLoading();
 
             try {
@@ -310,8 +487,6 @@
                 }
                 
                 let chatHistory = [];
-                let payload;
-
                 if (selectedImage) {
                     chatHistory.push({
                         role: "user",
@@ -329,7 +504,7 @@
                     chatHistory.push({ role: "user", parts: [{ text: finalPrompt }] });
                 }
 
-                payload = { contents: chatHistory };
+                const payload = { contents: chatHistory };
                 const apiKey = "";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
@@ -352,9 +527,17 @@
                             continue;
                         }
                         if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(`API hatası: ${response.status} - ${JSON.stringify(errorData)}`);
-                        }
+                             let errorMessage = `API hatası: ${response.status}`;
+                             try {
+                                 const errorData = await response.json();
+                                 if (errorData && errorData.error && errorData.error.message) {
+                                     errorMessage += ` - ${errorData.error.message}`;
+                                 }
+                             } catch(e) {
+                                 // Yanıt JSON formatında değilse yakala
+                             }
+                             throw new Error(errorMessage);
+                         }
                         break;
                     } catch (error) {
                         console.error("Fetch hatası:", error);
@@ -366,10 +549,11 @@
                 }
 
                 const result = await response.json();
-                const botResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text || 'Üzgünüm, bir hata oluştu ve yanıt veremedim.';
+                const botResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text || 'Üzgünüm, beklenmedik bir hata oluştu ve yanıt veremedim.';
                 
                 appendMessage('bot', botResponseText);
                 messages.push({ sender: 'bot', text: botResponseText });
+                saveChatHistory();
                 
                 selectedImage = null;
                 selectedImageMimeType = null;
@@ -378,22 +562,19 @@
             } catch (error) {
                 console.error("API veya fetch hatası:", error);
                 hideLoading();
+                appendMessage('bot', 'Üzgünüm, API isteği sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+                messages.push({ sender: 'bot', text: 'Üzgünüm, API isteği sırasında bir hata oluştu. Lütfen tekrar deneyin.' });
+                saveChatHistory();
+            } finally {
+                hideLoading();
                 isLoading = false;
                 sendButton.disabled = false;
                 inputField.disabled = false;
-                appendMessage('bot', 'Üzgünüm, API isteği sırasında bir hata oluştu. Lütfen tekrar deneyin.');
-                messages.push({ sender: 'bot', text: 'Üzgünüm, API isteği sırasında bir hata oluştu. Lütfen tekrar deneyin.' });
-            } finally {
-                if(isLoading) {
-                    hideLoading();
-                    isLoading = false;
-                    sendButton.disabled = false;
-                    inputField.disabled = false;
-                }
+                imageUploadButton.disabled = false;
             }
         };
 
-        // Event listeners
+        // Olay dinleyicileri
         sendButton.addEventListener('click', () => sendMessage());
         inputField.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -402,8 +583,9 @@
         });
 
         newChatButton.addEventListener('click', () => {
-            chatArea.innerHTML = `<div class="text-center text-gray-400 italic mt-10">GtX ile sohbet etmeye başla!</div>`;
             messages = [];
+            localStorage.removeItem('gtxChatHistory');
+            renderMessages();
             selectedImage = null;
             selectedImageMimeType = null;
             imageUploadInput.value = '';
@@ -423,19 +605,9 @@
                     selectedImageMimeType = file.type;
                     
                     const imgPlaceholderMessage = "Görsel yüklendi. Görsel hakkında soru sormak veya analiz etmesini istemek için mesajınızı yazın ve gönderin.";
-                    const messageContainer = document.createElement('div');
-                    messageContainer.className = `message-container user`;
-                    const messageDiv = document.createElement('div');
-                    messageDiv.className = `message user`;
-                    const img = document.createElement('img');
-                    img.src = `data:${selectedImageMimeType};base64,${selectedImage}`;
-                    img.className = 'image-preview';
-                    messageDiv.appendChild(img);
-                    const textNode = document.createTextNode(imgPlaceholderMessage);
-                    messageDiv.appendChild(textNode);
-                    messageContainer.appendChild(messageDiv);
-                    chatArea.appendChild(messageContainer);
-                    scrollToBottom();
+                    appendMessage('user', imgPlaceholderMessage, true);
+                    messages.push({ sender: 'user', text: imgPlaceholderMessage, hasImage: true });
+                    saveChatHistory();
                 };
                 reader.readAsDataURL(file);
             }
