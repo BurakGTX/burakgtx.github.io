@@ -157,7 +157,7 @@
 <body>
     <div id="auth-container" class="auth-container">
         <h1 class="text-2xl font-bold mb-4">Giriş Yap veya Kayıt Ol</h1>
-        <input type="email" id="email" class="w-full p-2 mb-2 rounded bg-gray-800 text-white" placeholder="Email (Kullanıcı Adı)">
+        <input type="text" id="usernameInput" class="w-full p-2 mb-2 rounded bg-gray-800 text-white" placeholder="Kullanıcı Adı">
         <input type="password" id="password" class="w-full p-2 mb-2 rounded bg-gray-800 text-white" placeholder="Şifre">
         <button id="signUpBtn" class="w-full bg-purple-600 text-white py-2 rounded mb-2">Kayıt Ol</button>
         <button id="signInBtn" class="w-full bg-blue-600 text-white py-2 rounded">Giriş Yap</button>
@@ -217,6 +217,7 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
+        const usersRef = db.ref('users');
         const chatRef = db.ref('chat');
         const userLastMessageRef = db.ref('userLastMessage');
         const giveawayRef = db.ref('giveaway');
@@ -240,15 +241,12 @@
         // Otomatik giriş
         auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
         auth.onAuthStateChanged((user) => {
-            if (user && user.emailVerified) {
+            if (user) {
                 userId = user.uid;
-                username = user.email.split('@')[0];
+                username = user.displayName || 'Kullanıcı_' + user.uid.slice(0, 8);
                 document.getElementById('auth-container').classList.add('hidden');
                 document.getElementById('chat-container').classList.remove('hidden');
                 startChat();
-            } else if (user && !user.emailVerified) {
-                document.getElementById('authStatus').textContent = 'Email doğrulanmadı. Lütfen doğrulayın.';
-                auth.signOut();
             } else {
                 document.getElementById('auth-container').classList.remove('hidden');
                 document.getElementById('chat-container').classList.add('hidden');
@@ -277,12 +275,29 @@
             if (localStorage.getItem('accountCreated')) return;
             try {
                 const token = await getRecaptchaToken('signup');
-                const email = document.getElementById('email').value;
+                const usernameInput = document.getElementById('usernameInput').value;
                 const password = document.getElementById('password').value;
-                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                await userCredential.user.sendEmailVerification();
+                if (!usernameInput || !password || password.length < 6) {
+                    throw new Error('Kullanıcı adı ve şifre gereklidir (şifre en az 6 karakter).');
+                }
+
+                // Kullanıcı adı benzersizlik kontrolü
+                const snapshot = await usersRef.orderByChild('username').equalTo(usernameInput).once('value');
+                if (snapshot.exists()) {
+                    throw new Error('Bu kullanıcı adı zaten alınmış.');
+                }
+
+                // Şifreyi şifrele
+                const encryptedPassword = CryptoJS.AES.encrypt(password, SHARED_KEY).toString();
+                const customToken = await auth.createCustomToken(usernameInput); // Simüle edilmiş token
+                const userCredential = await auth.signInWithCustomToken(customToken);
+                await usersRef.child(userId).set({
+                    username: usernameInput,
+                    password: encryptedPassword
+                });
                 localStorage.setItem('accountCreated', 'true');
-                document.getElementById('authStatus').textContent = 'Kayıt başarılı! Email doğrulama gönderildi.';
+                auth.currentUser.updateProfile({ displayName: usernameInput });
+                document.getElementById('authStatus').textContent = 'Kayıt başarılı!';
             } catch (error) {
                 document.getElementById('authStatus').textContent = 'Hata: ' + error.message;
             }
@@ -292,9 +307,20 @@
         document.getElementById('signInBtn').addEventListener('click', async () => {
             try {
                 const token = await getRecaptchaToken('signin');
-                const email = document.getElementById('email').value;
+                const usernameInput = document.getElementById('usernameInput').value;
                 const password = document.getElementById('password').value;
-                await auth.signInWithEmailAndPassword(email, password);
+                const snapshot = await usersRef.orderByChild('username').equalTo(usernameInput).once('value');
+                if (!snapshot.exists()) {
+                    throw new Error('Kullanıcı bulunamadı.');
+                }
+                const userData = snapshot.val()[Object.keys(snapshot.val())[0]];
+                const decryptedPassword = CryptoJS.AES.decrypt(userData.password, SHARED_KEY).toString(CryptoJS.enc.Utf8);
+                if (decryptedPassword !== password) {
+                    throw new Error('Yanlış şifre.');
+                }
+                const customToken = await auth.createCustomToken(usernameInput);
+                const userCredential = await auth.signInWithCustomToken(customToken);
+                auth.currentUser.updateProfile({ displayName: usernameInput });
             } catch (error) {
                 document.getElementById('authStatus').textContent = 'Hata: ' + error.message;
             }
