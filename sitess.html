@@ -9,7 +9,7 @@
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- reCAPTCHA -->
-    <script src="https://www.google.com/recaptcha/api.js?render=YOUR_RECAPTCHA_SITE_KEY"></script> <!-- BURAYA SITE KEY'İNİ KOY -->
+    <script src="https://www.google.com/recaptcha/api.js?render=6LcvPPUqAAAAACP2l6Zw3RADzkopSoe1NFQCoOLJ"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -32,7 +32,6 @@
             border: none;
             overflow: hidden;
         }
-        /* Diğer stiller aynı (chat-header, chat-messages, vs.) */
         .chat-header {
             display: flex;
             justify-content: space-between;
@@ -171,7 +170,24 @@
             <button id="logoutBtn" class="text-gray-400 hover:text-white">Çıkış Yap</button>
         </div>
         <div id="giveaway-container" class="giveaway-container">
-            <!-- Giveaway HTML aynı -->
+            <div class="giveaway-header">
+                <img src="https://burakgtx.neocities.org/image/wl.png" alt="Golden Rain" class="w-6 h-6">
+                <span>GOLDEN RAIN</span>
+                <span id="giveaway-participant-count" class="ml-auto">0 %</span>
+            </div>
+            <div class="giveaway-prize">
+                <span id="giveaway-prize-amount">0</span>
+                <img src="https://burakgtx.neocities.org/image/wl.png" class="w-4 h-4">
+            </div>
+            <p>10 şanslı kazanana dağıtılacak</p>
+            <div class="giveaway-progress">
+                <div id="giveaway-progress-bar" class="giveaway-progress-bar"></div>
+            </div>
+            <div class="giveaway-actions">
+                <button id="join-giveaway-btn" class="bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-1 px-4 rounded-full">
+                    Katıl
+                </button>
+            </div>
         </div>
         <div id="chat-messages" class="chat-messages flex flex-col-reverse"></div>
         <div class="chat-input-container">
@@ -206,7 +222,7 @@
         const giveawayRef = db.ref('giveaway');
 
         const SHARED_KEY = 'xai-chat-shared-key-2025';
-        const RECAPTCHA_SITE_KEY = '6LcvPPUqAAAAACP2l6Zw3RADzkopSoe1NFQCoOLJ'; // BURAYA SITE KEY'İNİ KOY
+        const RECAPTCHA_SITE_KEY = '6LcvPPUqAAAAACP2l6Zw3RADzkopSoe1NFQCoOLJ';
         let userId, username;
         const giveawayDuration = 3 * 60 * 1000;
         let giveawayInterval = null;
@@ -226,7 +242,7 @@
         auth.onAuthStateChanged((user) => {
             if (user && user.emailVerified) {
                 userId = user.uid;
-                username = user.email.split('@')[0]; // Email'den kullanıcı adı al
+                username = user.email.split('@')[0];
                 document.getElementById('auth-container').classList.add('hidden');
                 document.getElementById('chat-container').classList.remove('hidden');
                 startChat();
@@ -239,42 +255,49 @@
             }
         });
 
-        // Kayıt Ol
-        document.getElementById('signUpBtn').addEventListener('click', () => {
-            if (localStorage.getItem('accountCreated')) return;
-            grecaptcha.ready(() => {
-                grecaptcha.execute(RECAPTCHA_SITE_KEY, {action: 'signup'}).then((token) => {
-                    // Token manipülasyonu engelle (basit check)
-                    if (!token || token.length < 100) return document.getElementById('authStatus').textContent = 'Bot algılandı!';
-                    const email = document.getElementById('email').value;
-                    const password = document.getElementById('password').value;
-                    auth.createUserWithEmailAndPassword(email, password)
-                        .then((userCredential) => {
-                            userCredential.user.sendEmailVerification();
-                            localStorage.setItem('accountCreated', 'true');
-                            document.getElementById('authStatus').textContent = 'Kayıt başarılı! Email doğrulama gönderildi.';
-                        })
-                        .catch((error) => {
-                            document.getElementById('authStatus').textContent = 'Hata: ' + error.message;
-                        });
+        // reCAPTCHA fonksiyonu
+        let recaptchaToken = null;
+        function getRecaptchaToken(action) {
+            return new Promise((resolve, reject) => {
+                grecaptcha.ready(() => {
+                    grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: action }).then(token => {
+                        if (token && token.length >= 100) {
+                            recaptchaToken = token;
+                            resolve(token);
+                        } else {
+                            reject(new Error('Geçersiz reCAPTCHA token!'));
+                        }
+                    }).catch(error => reject(error));
                 });
             });
+        }
+
+        // Kayıt Ol
+        document.getElementById('signUpBtn').addEventListener('click', async () => {
+            if (localStorage.getItem('accountCreated')) return;
+            try {
+                const token = await getRecaptchaToken('signup');
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                await userCredential.user.sendEmailVerification();
+                localStorage.setItem('accountCreated', 'true');
+                document.getElementById('authStatus').textContent = 'Kayıt başarılı! Email doğrulama gönderildi.';
+            } catch (error) {
+                document.getElementById('authStatus').textContent = 'Hata: ' + error.message;
+            }
         });
 
         // Giriş Yap
-        document.getElementById('signInBtn').addEventListener('click', () => {
-            grecaptcha.ready(() => {
-                grecaptcha.execute(RECAPTCHA_SITE_KEY, {action: 'signin'}).then((token) => {
-                    if (!token || token.length < 100) return document.getElementById('authStatus').textContent = 'Bot algılandı!';
-                    const email = document.getElementById('email').value;
-                    const password = document.getElementById('password').value;
-                    auth.signInWithEmailAndPassword(email, password)
-                        .then(() => {})
-                        .catch((error) => {
-                            document.getElementById('authStatus').textContent = 'Hata: ' + error.message;
-                        });
-                });
-            });
+        document.getElementById('signInBtn').addEventListener('click', async () => {
+            try {
+                const token = await getRecaptchaToken('signin');
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                await auth.signInWithEmailAndPassword(email, password);
+            } catch (error) {
+                document.getElementById('authStatus').textContent = 'Hata: ' + error.message;
+            }
         });
 
         // Çıkış Yap
@@ -283,12 +306,212 @@
         });
 
         function startChat() {
-            // Mesaj dinleme ve diğer fonksiyonlar aynı (encryption, giveaway, sendMessage, vs.)
-            // ... (Önceki kodun geri kalanı buraya kopyalanır, ama username = user.email.split('@')[0]; ile güncellenir)
-            // Giveaway ve chat render aynı kalır.
-        }
+            chatRef.on('child_added', (snapshot) => {
+                const msg = snapshot.val();
+                try {
+                    const decryptedUser = CryptoJS.AES.decrypt(msg.user, SHARED_KEY).toString(CryptoJS.enc.Utf8);
+                    const decryptedText = CryptoJS.AES.decrypt(msg.text, SHARED_KEY).toString(CryptoJS.enc.Utf8);
+                    const decryptedTime = CryptoJS.AES.decrypt(msg.time, SHARED_KEY).toString(CryptoJS.enc.Utf8);
+                    const timeNum = parseInt(decryptedTime);
+                    if (isNaN(timeNum) || decryptedText.length > 70 || !decryptedUser || !decryptedText) return;
+                    const isBot = decryptedUser === 'General Bot';
+                    const profilePicUrl = isBot ? 'https://burakgtx.neocities.org/image/wl.png' : 'https://cdn.gamblit.net/profiles/Thiswackgame.webp?v=0';
+                    const messageElement = document.createElement('div');
+                    messageElement.classList.add('chat-message');
+                    if (decryptedText.includes(`@${username}`)) {
+                        messageElement.classList.add('mentioned-message');
+                    }
+                    messageElement.innerHTML = `
+                        <img src="${profilePicUrl}" class="profile-pic" alt="${decryptedUser}">
+                        <div class="chat-message-content">
+                            <span class="chat-username">${decryptedUser}:</span> ${parseMentions(decryptedText)}
+                        </div>
+                        <span class="chat-time">${new Date(timeNum).toLocaleTimeString('tr-TR')}</span>
+                    `;
+                    document.getElementById('chat-messages').appendChild(messageElement);
+                    messageElement.scrollIntoView();
+                } catch (e) {}
+            });
 
-        // Diğer fonksiyonlar (sendMessage, startGiveaway, vs.) aynı.
+            giveawayRef.on('value', (snapshot) => {
+                const giveawayData = snapshot.val() || {};
+                const giveawayContainer = document.getElementById('giveaway-container');
+                if (giveawayData.active) {
+                    giveawayContainer.style.display = 'block';
+                    document.getElementById('giveaway-prize-amount').textContent = giveawayData.prizeWL || 0;
+                    const participantsArray = Object.keys(giveawayData.participants || {});
+                    document.getElementById('giveaway-participant-count').textContent = participantsArray.length + ' %';
+                    startGiveawayTimer(giveawayData.endTime);
+                    checkGiveawayJoinStatus(participantsArray);
+                } else {
+                    giveawayContainer.style.display = 'none';
+                    if (giveawayInterval) clearInterval(giveawayInterval);
+                    document.getElementById('giveaway-progress-bar').style.width = '0%';
+                }
+            });
+
+            let lastSend = 0;
+            const sendBtn = document.getElementById('send');
+            const input = document.getElementById('input');
+            const status = document.getElementById('status');
+            const joinGiveawayBtn = document.getElementById('join-giveaway-btn');
+
+            sendBtn.addEventListener('click', sendMessage);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            joinGiveawayBtn.addEventListener('click', handleGiveawayJoin);
+
+            async function sendMessage() {
+                const now = Date.now();
+                if (now - lastSend < 3000) {
+                    status.textContent = 'Mesajlar arasında 3 saniye bekle.';
+                    setTimeout(() => status.textContent = '', 2000);
+                    return;
+                }
+                const text = input.value.trim();
+                if (text.length === 0 || text.length > 70) {
+                    status.textContent = 'Mesaj 1-70 karakter olmalı.';
+                    setTimeout(() => status.textContent = '', 2000);
+                    return;
+                }
+
+                if (text.startsWith('/giveaway')) {
+                    const amount = parseInt(text.split(' ')[1], 10);
+                    if (isNaN(amount) || amount <= 0) {
+                        status.textContent = 'Geçerli bir WL miktarı girin.';
+                        setTimeout(() => status.textContent = '', 2000);
+                        return;
+                    }
+                    await startGiveaway(amount);
+                    input.value = '';
+                    lastSend = now;
+                    return;
+                }
+
+                const encryptedUser = CryptoJS.AES.encrypt(username, SHARED_KEY).toString();
+                const encryptedText = CryptoJS.AES.encrypt(text, SHARED_KEY).toString();
+                const encryptedTime = CryptoJS.AES.encrypt(now.toString(), SHARED_KEY).toString();
+
+                userLastMessageRef.child(userId).set({ lastMessage: now });
+
+                chatRef.push({
+                    user: encryptedUser,
+                    text: encryptedText,
+                    time: encryptedTime
+                }).then(() => {
+                    input.value = '';
+                    lastSend = now;
+                    status.textContent = '';
+                }).catch((error) => {
+                    status.textContent = 'Mesaj gönderilemedi: ' + error.message;
+                    setTimeout(() => status.textContent = '', 2000);
+                });
+            }
+
+            async function startGiveaway(amount) {
+                const endTime = Date.now() + giveawayDuration;
+                giveawayRef.set({
+                    active: true,
+                    endTime: endTime,
+                    prizeWL: amount,
+                    participants: {}
+                }).then(() => {
+                    sendBotMessage(`Giveaway başladı! Ödül: ${amount} WL, Süre: 3 dakika. Katılmak için Join tuşuna basın.`);
+                }).catch((error) => {
+                    status.textContent = 'Giveaway başlatılamadı: ' + error.message;
+                    setTimeout(() => status.textContent = '', 2000);
+                });
+            }
+
+            function startGiveawayTimer(endTime) {
+                if (giveawayInterval) clearInterval(giveawayInterval);
+                const updateTimer = () => {
+                    const now = Date.now();
+                    const distance = endTime - now;
+                    if (distance <= 0) {
+                        clearInterval(giveawayInterval);
+                        handleGiveawayEnd();
+                        return;
+                    }
+                    const progress = ((giveawayDuration - distance) / giveawayDuration) * 100;
+                    document.getElementById('giveaway-progress-bar').style.width = `${progress}%`;
+                };
+                updateTimer();
+                giveawayInterval = setInterval(updateTimer, 1000);
+            }
+
+            async function handleGiveawayJoin() {
+                giveawayRef.child('participants').child(userId).set(true).then(() => {
+                    sendBotMessage(`${username} giveaway'a katıldı!`);
+                }).catch((error) => {
+                    status.textContent = 'Giveaway katılım hatası: ' + error.message;
+                    setTimeout(() => status.textContent = '', 2000);
+                });
+            }
+
+            async function handleGiveawayEnd() {
+                giveawayRef.once('value', (snapshot) => {
+                    const giveawayData = snapshot.val();
+                    if (!giveawayData || !giveawayData.active) return;
+
+                    const participantsArray = Object.keys(giveawayData.participants || {});
+                    const numWinners = Math.min(10, participantsArray.length);
+                    const prizePerWinner = Math.floor(giveawayData.prizeWL / numWinners) || 0;
+
+                    const shuffled = shuffleArray(participantsArray).slice(0, numWinners);
+                    let winnersList = '';
+                    shuffled.forEach((winnerId, index) => {
+                        winnersList += `Kullanıcı_${index + 1} (${prizePerWinner} WL)\n`;
+                    });
+
+                    sendBotMessage(`Giveaway bitti! Kazananlar:\n${winnersList}Toplam dağıtılan: ${giveawayData.prizeWL} WL`);
+
+                    giveawayRef.set({ active: false }).catch((error) => {
+                        status.textContent = 'Giveaway sonlandırma hatası: ' + error.message;
+                        setTimeout(() => status.textContent = '', 2000);
+                    });
+                });
+            }
+
+            function sendBotMessage(text) {
+                const encryptedUser = CryptoJS.AES.encrypt('General Bot', SHARED_KEY).toString();
+                const encryptedText = CryptoJS.AES.encrypt(text, SHARED_KEY).toString();
+                const encryptedTime = CryptoJS.AES.encrypt(Date.now().toString(), SHARED_KEY).toString();
+
+                chatRef.push({
+                    user: encryptedUser,
+                    text: encryptedText,
+                    time: encryptedTime
+                }).catch((error) => {
+                    status.textContent = 'Bot mesajı gönderilemedi: ' + error.message;
+                    setTimeout(() => status.textContent = '', 2000);
+                });
+            }
+
+            function checkGiveawayJoinStatus(participantsArray) {
+                const joinGiveawayBtn = document.getElementById('join-giveaway-btn');
+                if (participantsArray.includes(userId)) {
+                    joinGiveawayBtn.textContent = 'Katıldınız';
+                    joinGiveawayBtn.disabled = true;
+                } else {
+                    joinGiveawayBtn.textContent = 'Katıl';
+                    joinGiveawayBtn.disabled = false;
+                }
+            }
+
+            function parseMentions(text) {
+                return text.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
+            }
+
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+        }
     </script>
 </body>
 </html>
