@@ -287,10 +287,12 @@
                     throw new Error('Bu kullanıcı adı zaten alınmış.');
                 }
 
+                // Anonim giriş ile UID al
+                const anonCredential = await auth.signInAnonymously();
+                userId = anonCredential.user.uid;
+
                 // Şifreyi şifrele
                 const encryptedPassword = CryptoJS.AES.encrypt(password, SHARED_KEY).toString();
-                const customToken = await auth.createCustomToken(usernameInput); // Simüle edilmiş token
-                const userCredential = await auth.signInWithCustomToken(customToken);
                 await usersRef.child(userId).set({
                     username: usernameInput,
                     password: encryptedPassword
@@ -300,6 +302,7 @@
                 document.getElementById('authStatus').textContent = 'Kayıt başarılı!';
             } catch (error) {
                 document.getElementById('authStatus').textContent = 'Hata: ' + error.message;
+                if (auth.currentUser) auth.signOut(); // Hata durumunda anonim oturumu kapat
             }
         });
 
@@ -314,15 +317,19 @@
                     throw new Error('Kullanıcı bulunamadı.');
                 }
                 const userData = snapshot.val()[Object.keys(snapshot.val())[0]];
+                const userUid = Object.keys(snapshot.val())[0];
                 const decryptedPassword = CryptoJS.AES.decrypt(userData.password, SHARED_KEY).toString(CryptoJS.enc.Utf8);
                 if (decryptedPassword !== password) {
                     throw new Error('Yanlış şifre.');
                 }
-                const customToken = await auth.createCustomToken(usernameInput);
-                const userCredential = await auth.signInWithCustomToken(customToken);
-                auth.currentUser.updateProfile({ displayName: usernameInput });
+                // Anonim giriş ile UID eşleştir
+                const anonCredential = await auth.signInAnonymously();
+                userId = anonCredential.user.uid;
+                await auth.currentUser.updateProfile({ displayName: usernameInput });
+                document.getElementById('authStatus').textContent = 'Giriş başarılı!';
             } catch (error) {
                 document.getElementById('authStatus').textContent = 'Hata: ' + error.message;
+                if (auth.currentUser) auth.signOut(); // Hata durumunda anonim oturumu kapat
             }
         });
 
