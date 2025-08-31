@@ -1,0 +1,295 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Güvenli Sohbet</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- reCAPTCHA -->
+    <script src="https://www.google.com/recaptcha/api.js?render=6LenXbkrAAAAAI7fbj1CE07GEl3qSC-YU4-teBeh"></script> <!-- BURAYA SITE KEY'İNİ KOY -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0d0f11;
+            color: #fff;
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .chat-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #1e2023;
+            border-radius: 0;
+            border: none;
+            overflow: hidden;
+        }
+        /* Diğer stiller aynı (chat-header, chat-messages, vs.) */
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background-color: #1a1c1e;
+            border-bottom: 1px solid #333;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 1rem;
+        }
+        .chat-message {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        .chat-message .profile-pic {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+        .chat-message-content {
+            flex-grow: 1;
+            text-align: left;
+            word-break: break-word;
+            max-width: 100%;
+        }
+        .chat-username {
+            font-weight: 600;
+            color: #ddd;
+            cursor: pointer;
+        }
+        .chat-time {
+            font-size: 0.75rem;
+            color: #666;
+            margin-left: auto;
+        }
+        .chat-input-container {
+            display: flex;
+            padding: 1rem;
+            border-top: 1px solid #333;
+            background-color: #1a1c1e;
+        }
+        .chat-input {
+            flex-grow: 1;
+            background-color: #2b2e32;
+            border: 1px solid #444;
+            padding: 0.75rem;
+            border-radius: 8px;
+            color: #fff;
+            outline: none;
+        }
+        .chat-send-btn {
+            background-color: #6a0dad;
+            color: #fff;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-left: 0.5rem;
+            cursor: pointer;
+        }
+        .giveaway-container {
+            background-color: #1a1c1e;
+            padding: 1rem;
+            border-bottom: 1px solid #333;
+            display: none;
+        }
+        .giveaway-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        .giveaway-prize {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .giveaway-progress {
+            height: 8px;
+            background-color: #333;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+        .giveaway-progress-bar {
+            height: 100%;
+            background-color: #6a0dad;
+            width: 0;
+            transition: width 0.1s linear;
+        }
+        .giveaway-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+        }
+        .mention {
+            color: #3b82f6;
+            cursor: pointer;
+        }
+        .mentioned-message {
+            background-color: rgba(255, 165, 0, 0.2);
+            border-radius: 4px;
+            padding: 0.25rem;
+        }
+        #status { color: #ff4444; margin-top: 10px; }
+        #username { margin-top: 10px; }
+        .auth-container {
+            background-color: #1e2023;
+            padding: 2rem;
+            border-radius: 12px;
+            width: 300px;
+            text-align: center;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div id="auth-container" class="auth-container">
+        <h1 class="text-2xl font-bold mb-4">Giriş Yap veya Kayıt Ol</h1>
+        <input type="email" id="email" class="w-full p-2 mb-2 rounded bg-gray-800 text-white" placeholder="Email (Kullanıcı Adı)">
+        <input type="password" id="password" class="w-full p-2 mb-2 rounded bg-gray-800 text-white" placeholder="Şifre">
+        <button id="signUpBtn" class="w-full bg-purple-600 text-white py-2 rounded mb-2">Kayıt Ol</button>
+        <button id="signInBtn" class="w-full bg-blue-600 text-white py-2 rounded">Giriş Yap</button>
+        <p id="authStatus" class="text-red-500 mt-2"></p>
+    </div>
+
+    <div id="chat-container" class="chat-container hidden">
+        <div class="chat-header">
+            <h3 class="text-xl font-bold">Sohbet</h3>
+            <button id="logoutBtn" class="text-gray-400 hover:text-white">Çıkış Yap</button>
+        </div>
+        <div id="giveaway-container" class="giveaway-container">
+            <!-- Giveaway HTML aynı -->
+        </div>
+        <div id="chat-messages" class="chat-messages flex flex-col-reverse"></div>
+        <div class="chat-input-container">
+            <input type="text" id="input" class="chat-input" maxlength="70" placeholder="Mesaj yaz (en fazla 70 karakter)">
+            <button id="send" class="chat-send-btn">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+    <p id="status" class="text-center hidden"></p>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCin2wfKkQykr3vQoVhEDjASH7mwtfkjfs",
+            authDomain: "onlibeoyun.firebaseapp.com",
+            databaseURL: "https://onlibeoyun-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "onlibeoyun",
+            storageBucket: "onlibeoyun.firebasestorage.app",
+            messagingSenderId: "388782559654",
+            appId: "1:388782559654:web:4b85aa5ff4d0d65a757f67",
+            measurementId: "G-WSKKZTXXBP"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+        const chatRef = db.ref('chat');
+        const userLastMessageRef = db.ref('userLastMessage');
+        const giveawayRef = db.ref('giveaway');
+
+        const SHARED_KEY = 'xai-chat-shared-key-2025';
+        const RECAPTCHA_SITE_KEY = 'YOUR_RECAPTCHA_SITE_KEY'; // BURAYA SITE KEY'İNİ KOY
+        let userId, username;
+        const giveawayDuration = 3 * 60 * 1000;
+        let giveawayInterval = null;
+        let lastSend = 0;
+
+        // Debug engelle
+        console.clear(); console.log = () => {}; console.warn = () => {}; console.error = () => {};
+
+        // LocalStorage tek hesap kontrol
+        if (localStorage.getItem('accountCreated') && !auth.currentUser) {
+            document.getElementById('signUpBtn').disabled = true;
+            document.getElementById('authStatus').textContent = 'Bu cihazda zaten bir hesap oluşturulmuş. Giriş yapın.';
+        }
+
+        // Otomatik giriş
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        auth.onAuthStateChanged((user) => {
+            if (user && user.emailVerified) {
+                userId = user.uid;
+                username = user.email.split('@')[0]; // Email'den kullanıcı adı al
+                document.getElementById('auth-container').classList.add('hidden');
+                document.getElementById('chat-container').classList.remove('hidden');
+                startChat();
+            } else if (user && !user.emailVerified) {
+                document.getElementById('authStatus').textContent = 'Email doğrulanmadı. Lütfen doğrulayın.';
+                auth.signOut();
+            } else {
+                document.getElementById('auth-container').classList.remove('hidden');
+                document.getElementById('chat-container').classList.add('hidden');
+            }
+        });
+
+        // Kayıt Ol
+        document.getElementById('signUpBtn').addEventListener('click', () => {
+            if (localStorage.getItem('accountCreated')) return;
+            grecaptcha.ready(() => {
+                grecaptcha.execute(RECAPTCHA_SITE_KEY, {action: 'signup'}).then((token) => {
+                    // Token manipülasyonu engelle (basit check)
+                    if (!token || token.length < 100) return document.getElementById('authStatus').textContent = 'Bot algılandı!';
+                    const email = document.getElementById('email').value;
+                    const password = document.getElementById('password').value;
+                    auth.createUserWithEmailAndPassword(email, password)
+                        .then((userCredential) => {
+                            userCredential.user.sendEmailVerification();
+                            localStorage.setItem('accountCreated', 'true');
+                            document.getElementById('authStatus').textContent = 'Kayıt başarılı! Email doğrulama gönderildi.';
+                        })
+                        .catch((error) => {
+                            document.getElementById('authStatus').textContent = 'Hata: ' + error.message;
+                        });
+                });
+            });
+        });
+
+        // Giriş Yap
+        document.getElementById('signInBtn').addEventListener('click', () => {
+            grecaptcha.ready(() => {
+                grecaptcha.execute(RECAPTCHA_SITE_KEY, {action: 'signin'}).then((token) => {
+                    if (!token || token.length < 100) return document.getElementById('authStatus').textContent = 'Bot algılandı!';
+                    const email = document.getElementById('email').value;
+                    const password = document.getElementById('password').value;
+                    auth.signInWithEmailAndPassword(email, password)
+                        .then(() => {})
+                        .catch((error) => {
+                            document.getElementById('authStatus').textContent = 'Hata: ' + error.message;
+                        });
+                });
+            });
+        });
+
+        // Çıkış Yap
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            auth.signOut();
+        });
+
+        function startChat() {
+            // Mesaj dinleme ve diğer fonksiyonlar aynı (encryption, giveaway, sendMessage, vs.)
+            // ... (Önceki kodun geri kalanı buraya kopyalanır, ama username = user.email.split('@')[0]; ile güncellenir)
+            // Giveaway ve chat render aynı kalır.
+        }
+
+        // Diğer fonksiyonlar (sendMessage, startGiveaway, vs.) aynı.
+    </script>
+</body>
+</html>
