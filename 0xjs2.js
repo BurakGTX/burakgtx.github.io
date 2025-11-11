@@ -52,6 +52,8 @@ const moonIconEl = document.getElementById('moon-icon');
 const adminButtonEl = document.getElementById('admin-button');
 const rateLimitInfoEl = document.getElementById('rate-limit-info');
 const announcementToastEl = document.getElementById('announcement-toast');
+const sidebarToggleEl = document.getElementById('sidebar-toggle');
+const activeUsersSidebarEl = document.getElementById('active-users-sidebar');
 function loadTheme() {
     const isDarkMode = localStorage.getItem('theme') !== 'light';
     document.documentElement.classList.toggle('dark', isDarkMode);
@@ -411,6 +413,9 @@ function showAppContent(username) {
     listenToActiveUsers();
     listenToMessages();
     startResetListener();
+    if (window.innerWidth <= 768) {
+        sidebarToggleEl.classList.remove('hidden');
+    }
 }
 function displayAnnouncement(text) {
     announcementToastEl.textContent = text;
@@ -687,6 +692,11 @@ function checkAndHandleReset(oldResetTime) {
     });
 }
 function init() {
+    const allowedOrigin = 'https://burakgtx.github.io';
+    if (window.location.origin !== allowedOrigin) {
+        document.body.innerHTML = '<div class="flex items-center justify-center min-h-screen"><h1 class="text-2xl font-bold text-red-600">Bu uygulama sadece yetkili sitede çalışır. Erişim engellendi.</h1></div>';
+        return;
+    }
     loadTheme();
   
     if (!sendButtonEl.onclick) sendButtonEl.addEventListener('click', sendMessage);
@@ -698,6 +708,17 @@ function init() {
     });
     if (!messageInputEl.oninput) messageInputEl.addEventListener('input', checkRateLimit);
     if (!themeToggleEl.onclick) themeToggleEl.addEventListener('click', toggleTheme);
+    if (sidebarToggleEl) {
+        sidebarToggleEl.addEventListener('click', () => {
+            activeUsersSidebarEl.classList.toggle('open');
+        });
+        // Overlay kapatma için
+        document.addEventListener('click', (e) => {
+            if (!activeUsersSidebarEl.contains(e.target) && !sidebarToggleEl.contains(e.target)) {
+                activeUsersSidebarEl.classList.remove('open');
+            }
+        });
+    }
     try {
         firebase.initializeApp(firebaseConfig);
         db = firebase.database();
