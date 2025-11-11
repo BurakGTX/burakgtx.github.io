@@ -1,1511 +1,732 @@
-const allowedOrigin = 'https://burakgtx.github.io';
-function g() {
-  if (window.location.origin !== allowedOrigin && !window.location.origin.startsWith(allowedOrigin + '/')) {
-    Object.keys(window).forEach(k => {
-      if (k.includes('firebase') || k.includes('db')) delete window[k];
-    });
-    document.body.innerHTML = '';
-    throw new Error('');
-  }
-}
-g();
 const STATIC_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBDDjiiyKYZd3j0OadLGJtHgPHee5GMKBk",
-  authDomain: "burakgtxserver.firebaseapp.com",
-  databaseURL: "https://burakgtxserver-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "burakgtxserver",
-  storageBucket: "burakgtxserver.firebasestorage.app",
-  messagingSenderId: "123896236690",
-  appId: "1:123896236690:web:c5189b9fb4e0e19b5d344b",
-  measurementId: "G-7XENYB3MHV"
+    apiKey: "AIzaSyBDDjiiyKYZd3j0OadLGJtHgPHee5GMKBk",
+    authDomain: "burakgtxserver.firebaseapp.com",
+    databaseURL: "https://burakgtxserver-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "burakgtxserver",
+    storageBucket: "burakgtxserver.firebasestorage.app",
+    messagingSenderId: "123896236690",
+    appId: "1:123896236690:web:c5189b9fb4e0e19b5d344b",
+    measurementId: "G-7XENYB3MHV"
 };
-g();
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-g();
 const firebaseConfig = STATIC_FIREBASE_CONFIG;
-g();
 const CHAT_REF_PATH = `artifacts/${appId}/public/data/secure_chat`;
-g();
 const USERNAMES_PATH = `artifacts/${appId}/public/data/usernames`;
-g();
 const USERS_PATH = `artifacts/${appId}/users`;
-g();
 const PRESENCE_PATH = `artifacts/${appId}/public/data/presence`;
-g();
 const RESET_METADATA_PATH = `artifacts/${appId}/public/data/reset_metadata/next_reset_time`;
-g();
 const APP_STATUS_PATH = `artifacts/${appId}/public/data/app_status/is_closed`;
-g();
 const BANNED_USERS_PATH = `artifacts/${appId}/public/data/banned_users`;
-g();
 const ANNOUNCEMENTS_PATH = `artifacts/${appId}/public/data/announcements`;
-g();
 const LAST_MESSAGE_TIME_PATH = `artifacts/${appId}/public/data/last_message_time`;
-g();
 const ADMIN_USERNAME = "burakx";
-g();
 const RESET_INTERVAL_MS = 15 * 60 * 1000;
-g();
 const RATE_LIMIT_MS = 3000;
-g();
 let db, auth, userId = null;
-g();
 let globalUsername = null;
-g();
 let isAuthReady = false;
-g();
 let resetTimerInterval = null;
-g();
 let isAppClosed = false;
-g();
 let isBanned = false;
-g();
 let lastMessageTime = 0;
-g();
 let chatListener = null;
-g();
 let presenceListener = null;
-g();
 let activeUsersListener = null;
-g();
 let resetListener = null;
-g();
 let appStatusListener = null;
-g();
 let banListener = null;
-g();
 let announcementListener = null;
-g();
 const SECRET_PASSPHRASE = "secure-chat-key-12345";
-g();
 const SALT = new TextEncoder().encode("secure_salt_for_chat");
-g();
 const statusOverlayEl = document.getElementById('status-overlay');
-g();
 const appContentEl = document.getElementById('app-content');
-g();
 const chatMessagesEl = document.getElementById('chat-messages');
-g();
 const messageInputEl = document.getElementById('message-input');
-g();
 const sendButtonEl = document.getElementById('send-button');
-g();
 const currentUserInfoEl = document.getElementById('current-user-info');
-g();
 const userStatusEl = document.getElementById('user-status');
-g();
 const resetCounterEl = document.getElementById('reset-counter');
-g();
 const themeToggleEl = document.getElementById('theme-toggle');
-g();
 const sunIconEl = document.getElementById('sun-icon');
-g();
 const moonIconEl = document.getElementById('moon-icon');
-g();
 const adminButtonEl = document.getElementById('admin-button');
-g();
 const rateLimitInfoEl = document.getElementById('rate-limit-info');
-g();
 const announcementToastEl = document.getElementById('announcement-toast');
-g();
 function loadTheme() {
-  g();
-  const isDarkMode = localStorage.getItem('theme') !== 'light';
-  g();
-  document.documentElement.classList.toggle('dark', isDarkMode);
-  g();
-  updateThemeIcons(isDarkMode);
-  g();
+    const isDarkMode = localStorage.getItem('theme') !== 'light';
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    updateThemeIcons(isDarkMode);
 }
-g();
 function toggleTheme() {
-  g();
-  const isDarkMode = document.documentElement.classList.toggle('dark');
-  g();
-  localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-  g();
-  updateThemeIcons(isDarkMode);
-  g();
+    const isDarkMode = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+    updateThemeIcons(isDarkMode);
 }
-g();
 function updateThemeIcons(isDarkMode) {
-  g();
-  if (isDarkMode) {
-    g();
-    moonIconEl.classList.add('hidden');
-    g();
-    sunIconEl.classList.remove('hidden');
-    g();
-  } else {
-    g();
-    moonIconEl.classList.remove('hidden');
-    g();
-    sunIconEl.classList.add('hidden');
-    g();
-  }
-  g();
+     if (isDarkMode) { moonIconEl.classList.add('hidden'); sunIconEl.classList.remove('hidden'); }
+     else { moonIconEl.classList.remove('hidden'); sunIconEl.classList.add('hidden'); }
 }
-g();
 async function getEncryptionKey() {
-  g();
-  const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(SECRET_PASSPHRASE), { name: "PBKDF2" }, false, ["deriveKey"]);
-  g();
-  const key = crypto.subtle.deriveKey({ name: "PBKDF2", salt: SALT, iterations: 100000, hash: "SHA-256", }, keyMaterial, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
-  g();
-  return key;
-  g();
+    const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(SECRET_PASSPHRASE), { name: "PBKDF2" }, false, ["deriveKey"]);
+    return crypto.subtle.deriveKey({ name: "PBKDF2", salt: SALT, iterations: 100000, hash: "SHA-256", }, keyMaterial, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
 }
-g();
 async function encryptData(text) {
-  g();
-  const key = await getEncryptionKey();
-  g();
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  g();
-  const encodedText = new TextEncoder().encode(text);
-  g();
-  const cipherText = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, encodedText);
-  g();
-  const base64CipherText = btoa(String.fromCharCode.apply(null, new Uint8Array(cipherText)));
-  g();
-  const base64IV = btoa(String.fromCharCode.apply(null, iv));
-  g();
-  const result = { cipherText: base64CipherText, iv: base64IV };
-  g();
-  return result;
-  g();
-}
-g();
-async function decryptData(base64CipherText, base64IV) {
-  g();
-  try {
     const key = await getEncryptionKey();
-    g();
-    const iv = new Uint8Array(atob(base64IV).split("").map(char => char.charCodeAt(0)));
-    g();
-    const cipherText = new Uint8Array(atob(base64CipherText).split("").map(char => char.charCodeAt(0)));
-    g();
-    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, cipherText);
-    g();
-    const decoded = new TextDecoder().decode(decrypted);
-    g();
-    return decoded;
-    g();
-  } catch (error) {
-    g();
-    const errorMsg = "Mesaj Çözülemedi (Hata)";
-    g();
-    return errorMsg;
-    g();
-  }
-  g();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encodedText = new TextEncoder().encode(text);
+    const cipherText = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, encodedText);
+    const base64CipherText = btoa(String.fromCharCode.apply(null, new Uint8Array(cipherText)));
+    const base64IV = btoa(String.fromCharCode.apply(null, iv));
+    return { cipherText: base64CipherText, iv: base64IV };
 }
-g();
+async function decryptData(base64CipherText, base64IV) {
+    try {
+        const key = await getEncryptionKey();
+        const iv = new Uint8Array(atob(base64IV).split("").map(char => char.charCodeAt(0)));
+        const cipherText = new Uint8Array(atob(base64CipherText).split("").map(char => char.charCodeAt(0)));
+        const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, cipherText);
+        return new TextDecoder().decode(decrypted);
+    } catch (error) { return "Mesaj Çözülemedi (Hata)"; }
+}
 let rateLimitTimeout = null;
-g();
 function checkRateLimit() {
-  g();
-  const now = Date.now();
-  g();
-  const timeSinceLastMessage = now - lastMessageTime;
-  g();
-  if (timeSinceLastMessage < RATE_LIMIT_MS) {
-    g();
-    const remainingTime = RATE_LIMIT_MS - timeSinceLastMessage;
-    g();
-    sendButtonEl.disabled = true;
-    g();
-    rateLimitInfoEl.classList.remove('hidden');
-    g();
-    if (rateLimitTimeout) {
-      g();
-      clearTimeout(rateLimitTimeout);
-      g();
+    const now = Date.now();
+    const timeSinceLastMessage = now - lastMessageTime;
+    if (timeSinceLastMessage < RATE_LIMIT_MS) {
+        const remainingTime = RATE_LIMIT_MS - timeSinceLastMessage;
+        sendButtonEl.disabled = true;
+        rateLimitInfoEl.classList.remove('hidden');
+        if (rateLimitTimeout) clearTimeout(rateLimitTimeout);
+        rateLimitTimeout = setTimeout(() => {
+            sendButtonEl.disabled = false;
+            rateLimitInfoEl.classList.add('hidden');
+        }, remainingTime);
+        return false;
     }
-    g();
-    rateLimitTimeout = setTimeout(() => {
-      g();
-      sendButtonEl.disabled = false;
-      g();
-      rateLimitInfoEl.classList.add('hidden');
-      g();
-    }, remainingTime);
-    g();
-    return false;
-    g();
-  }
-  g();
-  sendButtonEl.disabled = false;
-  g();
-  rateLimitInfoEl.classList.add('hidden');
-  g();
-  return true;
-  g();
+    sendButtonEl.disabled = false;
+    rateLimitInfoEl.classList.add('hidden');
+    return true;
 }
-g();
 function toggleAdminButton() {
-  g();
-  if (globalUsername === ADMIN_USERNAME) {
-    g();
-    adminButtonEl.classList.remove('hidden');
-    g();
-    if (!adminButtonEl.onclick) {
-      g();
-      adminButtonEl.addEventListener('click', showAdminPanel);
-      g();
+    if (globalUsername === ADMIN_USERNAME) {
+        adminButtonEl.classList.remove('hidden');
+        if (!adminButtonEl.onclick) {
+            adminButtonEl.addEventListener('click', showAdminPanel);
+        }
+    } else {
+        adminButtonEl.classList.add('hidden');
     }
-    g();
-  } else {
-    g();
-    adminButtonEl.classList.add('hidden');
-    g();
-  }
-  g();
 }
-g();
 function showAdminPanel() {
-  g();
-  if (globalUsername !== ADMIN_USERNAME) {
-    g();
-    return;
-    g();
-  }
-  g();
-  const adminHtml = `
-    <div id="admin-panel" class="p-8 w-full max-w-lg rounded-xl bg-white dark:bg-gray-800 shadow-2xl">
-      <h2 class="text-2xl font-bold mb-6 text-indigo-600 dark:text-indigo-400">Admin Paneli</h2>
-      <div class="mb-6 p-4 rounded-lg flex justify-between items-center ${isAppClosed ? 'bg-red-100 dark:bg-red-900' : 'bg-green-100 dark:bg-green-900'}">
-        <p class="font-medium text-gray-800 dark:text-white">Site Durumu: <span id="site-status-text" class="font-bold">${isAppClosed ? 'KAPALI' : 'AÇIK'}</span></p>
-        <button id="toggle-site-button" class="py-2 px-4 rounded-lg text-white font-bold transition duration-150 ${isAppClosed ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}">
-          Siteyi ${isAppClosed ? 'AÇ' : 'KAPAT'}
-        </button>
-      </div>
-      <div class="mb-6">
-        <h3 class="font-semibold mb-2 text-gray-800 dark:text-white">Sohbeti Temizle</h3>
-        <button id="clear-chat-button" class="w-full bg-red-600 text-white p-2 rounded-lg hover:bg-red-700">
-          Sohbeti Anında Temizle
-        </button>
-      </div>
-      <div class="mb-6">
-        <h3 class="font-semibold mb-2 text-gray-800 dark:text-white">Duyuru Yayınla</h3>
-        <input type="text" id="announcement-input" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-gray-800 dark:text-white" placeholder="Duyuru metni..." maxlength="500">
-        <button id="send-announcement-button" class="w-full mt-2 bg-yellow-500 text-white p-2 rounded-lg hover:bg-yellow-600">
-          Duyuru Gönder
-        </button>
-      </div>
-      <h3 class="font-semibold mb-3 text-gray-800 dark:text-white">Banlı Kullanıcılar</h3>
-      <ul id="banned-users-list" class="max-h-40 overflow-y-auto bg-gray-100 dark:bg-gray-700 p-3 rounded-lg space-y-2">
-        <!-- Banlılar buraya yüklenecek -->
-      </ul>
-      <button id="close-admin-panel" class="w-full mt-6 bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700">
-        Paneli Kapat
-      </button>
-    </div>
-  `;
-  g();
-  statusOverlayEl.innerHTML = adminHtml;
-  g();
-  statusOverlayEl.classList.remove('hidden');
-  g();
-  const closeBtn = document.getElementById('close-admin-panel');
-  g();
-  if (closeBtn && !closeBtn.onclick) {
-    g();
-    closeBtn.addEventListener('click', () => showAppContent(globalUsername));
-    g();
-  }
-  g();
-  const toggleBtn = document.getElementById('toggle-site-button');
-  g();
-  if (toggleBtn && !toggleBtn.onclick) {
-    g();
-    toggleBtn.addEventListener('click', toggleSiteStatus);
-    g();
-  }
-  g();
-  const sendAnnBtn = document.getElementById('send-announcement-button');
-  g();
-  if (sendAnnBtn && !sendAnnBtn.onclick) {
-    g();
-    sendAnnBtn.addEventListener('click', sendAnnouncement);
-    g();
-  }
-  g();
-  const clearChatBtn = document.getElementById('clear-chat-button');
-  g();
-  if (clearChatBtn && !clearChatBtn.onclick) {
-    g();
-    clearChatBtn.addEventListener('click', clearChatNow);
-    g();
-  }
-  g();
-  listenToBannedUsers();
-  g();
-}
-g();
-function clearChatNow() {
-  g();
-  if (confirm('Sohbeti tamamen temizlemek istediğinizden emin misiniz?')) {
-    g();
-    db.ref(CHAT_REF_PATH).remove().then(() => {
-      g();
-      displayAnnouncement('Admin tarafından sohbet temizlendi.');
-      g();
-      console.log('Sohbet temizlendi.');
-      g();
-    }).catch(error => {
-      g();
-      console.error('Sohbet temizleme hatası:', error);
-      g();
-      alert('Temizleme hatası: ' + error.message);
-      g();
-    });
-    g();
-  }
-  g();
-}
-g();
-function toggleSiteStatus() {
-  g();
-  const statusRef = db.ref(APP_STATUS_PATH);
-  g();
-  const newStatus = !isAppClosed;
-  g();
-  statusRef.set(newStatus).then(() => {
-    g();
-    console.log('Site durumu güncellendi:', newStatus);
-    g();
-  }).catch(error => {
-    g();
-    console.error("Site Durumu Güncelleme Hatası:", error);
-    g();
-    alert("Hata: Site durumunu güncelleyemediniz.");
-    g();
-  });
-  g();
-}
-g();
-function banUser(uid) {
-  g();
-  if (uid === userId) {
-    g();
-    console.warn("Kendi kendinizi banlayamazsınız.");
-    g();
-    return;
-    g();
-  }
-  g();
-  const banRef = db.ref(`${BANNED_USERS_PATH}/${uid}`);
-  g();
-  banRef.set(true).then(() => {
-    g();
-    console.log("Kullanıcı banlandı:", uid);
-    g();
-    displayAnnouncement(`${uid.slice(-6)} ID'li kullanıcı banlandı.`);
-    g();
-  }).catch(error => {
-    g();
-    console.error("Kullanıcı Banlama Hatası:", error);
-    g();
-    alert("Banlama hatası: " + error.message);
-    g();
-  });
-  g();
-}
-g();
-function unbanUser(uid) {
-  g();
-  const banRef = db.ref(`${BANNED_USERS_PATH}/${uid}`);
-  g();
-  banRef.remove().then(() => {
-    g();
-    console.log("Ban kaldırıldı:", uid);
-    g();
-  }).catch(error => {
-    g();
-    console.error("Kullanıcı Ban Kaldırma Hatası:", error);
-    g();
-    alert("Ban kaldırma hatası: " + error.message);
-    g();
-  });
-  g();
-}
-g();
-function sendAnnouncement() {
-  g();
-  const announcementText = document.getElementById('announcement-input').value.trim();
-  g();
-  if (!announcementText) {
-    g();
-    return;
-    g();
-  }
-  g();
-  const announcementRef = db.ref(ANNOUNCEMENTS_PATH);
-  g();
-  announcementRef.push({
-    text: announcementText,
-    createdAt: firebase.database.ServerValue.TIMESTAMP
-  }).then(() => {
-    g();
-    document.getElementById('announcement-input').value = '';
-    g();
-    displayAnnouncement(announcementText);
-    g();
-  }).catch(error => {
-    g();
-    console.error("Duyuru Gönderme Hatası:", error);
-    g();
-    alert("Hata: Duyuru gönderilemedi.");
-    g();
-  });
-  g();
-}
-g();
-function listenToBannedUsers() {
-  g();
-  const bannedRef = db.ref(BANNED_USERS_PATH);
-  g();
-  const bannedUsersListEl = document.getElementById('banned-users-list');
-  g();
-  if (!bannedUsersListEl || globalUsername !== ADMIN_USERNAME) {
-    g();
-    return;
-    g();
-  }
-  g();
-  if (bannedRef.off) {
-    g();
-    bannedRef.off('value');
-    g();
-  }
-  g();
-  bannedRef.on('value', (snapshot) => {
-    g();
-    const bannedUidsObj = snapshot.val() || {};
-    g();
-    const bannedUids = Object.keys(bannedUidsObj);
-    g();
-    bannedUsersListEl.innerHTML = '';
-    g();
-    if (bannedUids.length === 0) {
-      g();
-      bannedUsersListEl.innerHTML = '<li class="text-sm text-gray-500 dark:text-gray-400">Banlı kullanıcı yok.</li>';
-      g();
-      return;
-      g();
-    }
-    g();
-    const usernamePromises = bannedUids.map(uid => {
-      g();
-      const userRef = db.ref(`${USERS_PATH}/${uid}/username`);
-      g();
-      return userRef.once('value').then(userSnapshot => {
-        g();
-        return { uid, username: userSnapshot.val() || `Bilinmeyen (${uid.slice(-6)})` };
-        g();
-      });
-      g();
-    });
-    g();
-    Promise.all(usernamePromises).then(users => {
-      g();
-      users.forEach(({ uid, username }) => {
-        g();
-        const li = document.createElement('li');
-        g();
-        li.className = "flex justify-between items-center text-red-600 dark:text-red-400 font-medium";
-        g();
-        li.innerHTML = `
-          <span>${username}</span>
-          <button data-uid="${uid}" class="unban-button text-xs bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded-full transition duration-150">
-            Banı Kaldır
-          </button>
-        `;
-        g();
-        bannedUsersListEl.appendChild(li);
-        g();
-      });
-      g();
-      document.querySelectorAll('.unban-button').forEach(button => {
-        g();
-        if (!button.onclick) {
-          g();
-          button.addEventListener('click', (e) => unbanUser(e.target.dataset.uid));
-          g();
-        }
-        g();
-      });
-      g();
-    }).catch(error => {
-      g();
-      console.error("Banlı kullanıcılar yüklenirken hata:", error);
-      g();
-    });
-    g();
-  });
-  g();
-}
-g();
-function listenToAppStatus() {
-  g();
-  if (!userId) {
-    g();
-    return;
-    g();
-  }
-  g();
-  const statusRef = db.ref(APP_STATUS_PATH);
-  g();
-  const bannedRef = db.ref(`${BANNED_USERS_PATH}/${userId}`);
-  g();
-  if (appStatusListener) {
-    g();
-    statusRef.off('value', appStatusListener);
-    g();
-  }
-  g();
-  if (banListener) {
-    g();
-    bannedRef.off('value', banListener);
-    g();
-  }
-  g();
-  appStatusListener = (snapshot) => {
-    g();
-    isAppClosed = snapshot.val() === true;
-    g();
-    if (isAuthReady) {
-      g();
-      updateUIAccordingToStatus();
-      g();
-    }
-    g();
-    const statusTextEl = document.getElementById('site-status-text');
-    g();
-    const toggleButtonEl = document.getElementById('toggle-site-button');
-    g();
-    if (statusTextEl && toggleButtonEl) {
-      g();
-      statusTextEl.textContent = isAppClosed ? 'KAPALI' : 'AÇIK';
-      g();
-      toggleButtonEl.textContent = `Siteyi ${isAppClosed ? 'AÇ' : 'KAPAT'}`;
-      g();
-      const statusDiv = toggleButtonEl.closest('.p-4');
-      g();
-      if (statusDiv) {
-        g();
-        statusDiv.className = statusDiv.className.replace(/bg-(red|green)-100|dark:bg-(red|green)-900/g, '');
-        g();
-        statusDiv.classList.add(isAppClosed ? 'bg-red-100 dark:bg-red-900' : 'bg-green-100 dark:bg-green-900');
-        g();
-      }
-      g();
-      toggleButtonEl.className = toggleButtonEl.className.replace(/bg-(red|green)-(600|700)|hover:bg-(red|green)-(600|700)/g, '');
-      g();
-      toggleButtonEl.classList.add(isAppClosed ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700');
-      g();
-    }
-    g();
-  };
-  g();
-  statusRef.on('value', appStatusListener);
-  g();
-  banListener = (snapshot) => {
-    g();
-    isBanned = snapshot.exists();
-    g();
-    if (isAuthReady) {
-      g();
-      updateUIAccordingToStatus();
-      g();
-    }
-    g();
-  };
-  g();
-  bannedRef.on('value', banListener);
-  g();
-  const announcementRef = db.ref(ANNOUNCEMENTS_PATH).limitToLast(1);
-  g();
-  if (announcementListener) {
-    g();
-    announcementRef.off('child_added', announcementListener);
-    g();
-  }
-  g();
-  announcementListener = (snapshot) => {
-    g();
-    const data = snapshot.val();
-    g();
-    if (data && Date.now() - data.createdAt < 5000) {
-      g();
-      displayAnnouncement(data.text);
-      g();
-    }
-    g();
-  };
-  g();
-  announcementRef.on('child_added', announcementListener);
-  g();
-}
-g();
-function listenToMessages() {
-  g();
-  if (!isAuthReady || !globalUsername || !db) {
-    g();
-    return;
-    g();
-  }
-  g();
-  if (chatListener) {
-    g();
-    db.ref(CHAT_REF_PATH).off('child_added', chatListener);
-    g();
-  }
-  g();
-  const chatRef = db.ref(CHAT_REF_PATH).orderByChild("createdAt").limitToLast(50);
-  g();
-  chatMessagesEl.innerHTML = '<p id="empty-message" class="text-center text-gray-500 dark:text-gray-400">Sohbet Geçmişi Yükleniyor...</p>';
-  g();
-  chatListener = (snapshot) => {
-    g();
-    const emptyMessageEl = document.getElementById('empty-message');
-    g();
-    if (emptyMessageEl) {
-      g();
-      emptyMessageEl.remove();
-      g();
-    }
-    g();
-    const messageData = snapshot.val();
-    g();
-    const key = snapshot.key;
-    g();
-    if (messageData) {
-      g();
-      decryptAndDisplayMessage(messageData, key);
-      g();
-    }
-    g();
-    setTimeout(() => {
-      g();
-      chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
-      g();
-    }, 0);
-    g();
-  };
-  g();
-  chatRef.on('child_added', chatListener, (error) => {
-    g();
-    console.error("Realtime DB Dinleme Hatası:", error);
-    g();
-    chatMessagesEl.innerHTML = '<p class="text-center text-red-500">Sohbet yüklenemedi.</p>';
-    g();
-  });
-  g();
-  setTimeout(() => {
-    g();
-    const emptyEl = document.getElementById('empty-message');
-    g();
-    if (emptyEl) {
-      g();
-      emptyEl.textContent = 'Henüz mesaj yok. İlk mesajı siz atın!';
-      g();
-    }
-    g();
-  }, 1000);
-  g();
-}
-g();
-function updateUIAccordingToStatus() {
-  g();
-  if (!isAuthReady) {
-    g();
-    return;
-    g();
-  }
-  g();
-  if (isBanned && globalUsername !== ADMIN_USERNAME) {
-    g();
-    showStatusOverlay(true, "YASAKLANDI", "Bu sohbet odasına erişiminiz kalıcı olarak engellenmiştir.", 'red');
-    g();
-    return;
-    g();
-  }
-  g();
-  if (isAppClosed && globalUsername !== ADMIN_USERNAME) {
-    g();
-    showStatusOverlay(true, "BAKIMDA", "Site şu anda Kapalı veya Bakım Modundadır.", 'yellow');
-    g();
-    return;
-    g();
-  }
-  g();
-  if (globalUsername) {
-    g();
-    showAppContent(globalUsername);
-    g();
-  } else {
-    g();
-    showStatusOverlay(true, "USERNAME", "");
-    g();
-    checkUserRegistration();
-    g();
-  }
-  g();
-}
-g();
-function showLoadingScreen() {
-  g();
-  showStatusOverlay(true, "LOADING", "Kullanıcı verileri kontrol ediliyor ve sohbet yükleniyor...");
-  g();
-}
-g();
-function showStatusOverlay(show, title, message, color) {
-  g();
-  if (show) {
-    g();
-    appContentEl.classList.add('hidden');
-    g();
-    statusOverlayEl.classList.remove('hidden');
-    g();
-    statusOverlayEl.classList.add('flex', 'flex-col');
-    g();
-    if (title === "LOADING") {
-      g();
-      statusOverlayEl.innerHTML = `
-        <svg class="animate-spin h-8 w-8 text-indigo-600 dark:text-indigo-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-        <p id="loading-text">${message}</p>
-      `;
-      g();
-    } else if (title === "USERNAME") {
-      g();
-      const usernameHtml = `
-        <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Kullanıcı Adı Oluşturun</h2>
-        <p class="mb-6 text-gray-600 dark:text-gray-400">Sohbete katılmak için benzersiz bir kullanıcı adı belirleyin (Max 12 karakter).</p>
-        <input type="text" id="username-input" class="w-full max-w-sm p-3 border rounded-lg placeholder-gray-500 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" placeholder="Kullanıcı adınız..." maxlength="12">
-        <button id="save-username-button" class="w-full max-w-sm mt-4 bg-indigo-600 text-white p-3 rounded-lg shadow-md hover:bg-indigo-700 transition duration-150">
-          Kaydet ve Sohbete Katıl
-        </button>
-        <p id="username-error" class="text-xs mt-3 text-red-500 font-medium"></p>
-      `;
-      g();
-      statusOverlayEl.innerHTML = usernameHtml;
-      g();
-      const saveBtn = document.getElementById('save-username-button');
-      g();
-      if (saveBtn && !saveBtn.onclick) {
-        g();
-        saveBtn.addEventListener('click', saveUsername);
-        g();
-      }
-      g();
-      const inputEl = document.getElementById('username-input');
-      g();
-      if (inputEl && !inputEl.onkeydown) {
-        g();
-        inputEl.addEventListener('keydown', (e) => {
-          g();
-          if (e.key === 'Enter') {
-            g();
-            e.preventDefault();
-            g();
-            saveUsername();
-            g();
-          }
-          g();
-        });
-        g();
-      }
-      g();
-    } else {
-      g();
-      statusOverlayEl.innerHTML = `
-        <div class="p-8 rounded-xl shadow-lg bg-gray-100 dark:bg-gray-800 border-t-4 border-${color}-500">
-          <h2 class="text-3xl font-bold mb-2 text-${color}-600 dark:text-${color}-400">${title}</h2>
-          <p class="text-lg text-gray-600 dark:text-gray-300">${message}</p>
-          <p class="text-sm mt-4 text-gray-500 dark:text-gray-400">Lütfen daha sonra tekrar deneyin.</p>
+    if (globalUsername !== ADMIN_USERNAME) return;
+    const adminHtml = `
+        <div id="admin-panel" class="p-8 w-full max-w-lg rounded-xl bg-white dark:bg-gray-800 shadow-2xl">
+            <h2 class="text-2xl font-bold mb-6 text-indigo-600 dark:text-indigo-400">Admin Paneli</h2>
+          
+            <div class="mb-6 p-4 rounded-lg flex justify-between items-center ${isAppClosed ? 'bg-red-100 dark:bg-red-900' : 'bg-green-100 dark:bg-green-900'}">
+                <p class="font-medium text-gray-800 dark:text-white">Site Durumu: <span id="site-status-text" class="font-bold">${isAppClosed ? 'KAPALI' : 'AÇIK'}</span></p>
+                <button id="toggle-site-button" class="py-2 px-4 rounded-lg text-white font-bold transition duration-150 ${isAppClosed ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}">
+                    Siteyi ${isAppClosed ? 'AÇ' : 'KAPAT'}
+                </button>
+            </div>
+            <div class="mb-6">
+                <h3 class="font-semibold mb-2 text-gray-800 dark:text-white">Sohbeti Temizle</h3>
+                <button id="clear-chat-button" class="w-full bg-red-600 text-white p-2 rounded-lg hover:bg-red-700">
+                    Sohbeti Anında Temizle
+                </button>
+            </div>
+            <div class="mb-6">
+                <h3 class="font-semibold mb-2 text-gray-800 dark:text-white">Duyuru Yayınla</h3>
+                <input type="text" id="announcement-input" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-gray-800 dark:text-white" placeholder="Duyuru metni..." maxlength="500">
+                <button id="send-announcement-button" class="w-full mt-2 bg-yellow-500 text-white p-2 rounded-lg hover:bg-yellow-600">
+                    Duyuru Gönder
+                </button>
+            </div>
+            <h3 class="font-semibold mb-3 text-gray-800 dark:text-white">Banlı Kullanıcılar</h3>
+            <ul id="banned-users-list" class="max-h-40 overflow-y-auto bg-gray-100 dark:bg-gray-700 p-3 rounded-lg space-y-2">
+                <!-- Banlılar buraya yüklenecek -->
+            </ul>
+            <button id="close-admin-panel" class="w-full mt-6 bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700">
+                Paneli Kapat
+            </button>
         </div>
-      `;
-      g();
+    `;
+    statusOverlayEl.innerHTML = adminHtml;
+    statusOverlayEl.classList.remove('hidden');
+    const closeBtn = document.getElementById('close-admin-panel');
+    if (closeBtn && !closeBtn.onclick) closeBtn.addEventListener('click', () => showAppContent(globalUsername));
+    const toggleBtn = document.getElementById('toggle-site-button');
+    if (toggleBtn && !toggleBtn.onclick) toggleBtn.addEventListener('click', toggleSiteStatus);
+    const sendAnnBtn = document.getElementById('send-announcement-button');
+    if (sendAnnBtn && !sendAnnBtn.onclick) sendAnnBtn.addEventListener('click', sendAnnouncement);
+    const clearChatBtn = document.getElementById('clear-chat-button');
+    if (clearChatBtn && !clearChatBtn.onclick) clearChatBtn.addEventListener('click', clearChatNow);
+  
+    listenToBannedUsers();
+}
+function clearChatNow() {
+    if (confirm('Sohbeti tamamen temizlemek istediğinizden emin misiniz?')) {
+        db.ref(CHAT_REF_PATH).remove().then(() => {
+            displayAnnouncement('Admin tarafından sohbet temizlendi.');
+            console.log('Sohbet temizlendi.');
+        }).catch(error => {
+            console.error('Sohbet temizleme hatası:', error);
+            alert('Temizleme hatası: ' + error.message);
+        });
     }
-    g();
-  } else {
-    g();
-    statusOverlayEl.classList.add('hidden');
-    g();
-    appContentEl.classList.remove('hidden');
-    g();
-    appContentEl.classList.add('flex');
-    g();
-  }
-  g();
 }
-g();
-function showAppContent(username) {
-  g();
-  showStatusOverlay(false);
-  g();
-  currentUserInfoEl.textContent = `${username} (ID: ...${userId.slice(-6)})`;
-  g();
-  sendButtonEl.disabled = false;
-  g();
-  toggleAdminButton();
-  g();
-  setupPresence();
-  g();
-  listenToActiveUsers();
-  g();
-  listenToMessages();
-  g();
-  startResetListener();
-  g();
-}
-g();
-function displayAnnouncement(text) {
-  g();
-  announcementToastEl.textContent = text;
-  g();
-  announcementToastEl.classList.remove('hidden');
-  g();
-  announcementToastEl.classList.remove('announcement');
-  g();
-  setTimeout(() => {
-    g();
-    announcementToastEl.classList.add('announcement');
-    g();
-  }, 10);
-  g();
-  setTimeout(() => {
-    g();
-    announcementToastEl.classList.add('hidden');
-    g();
-    announcementToastEl.classList.remove('announcement');
-    g();
-  }, 5000);
-  g();
-}
-g();
-function decryptAndDisplayMessage(messageData, key) {
-  g();
-  const isMine = messageData.userId === userId;
-  g();
-  const messageElement = document.createElement('div');
-  g();
-  messageElement.className = `flex ${isMine ? 'justify-end' : 'justify-start'}`;
-  g();
-  const usernameColor = messageData.userId === userId ? 'text-indigo-400' :
-    messageData.username === ADMIN_USERNAME ? 'text-red-500' :
-    'text-green-400';
-  g();
-  let banButtonHtml = '';
-  g();
-  if (globalUsername === ADMIN_USERNAME && !isMine) {
-    g();
-    banButtonHtml = `<button data-uid="${messageData.userId}" data-username="${messageData.username}" class="ban-button text-xs bg-red-500 hover:bg-red-700 text-white py-0.5 px-2 ml-2 rounded-full transition duration-150">Ban</button>`;
-    g();
-  }
-  g();
-  messageElement.innerHTML = `
-    <div class="chat-bubble p-3 rounded-xl shadow-md ${isMine ? 'bg-indigo-600 dark:bg-indigo-700 text-white rounded-br-none' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded-tl-none'}">
-      <div class="flex items-center mb-1">
-        <span class="font-bold text-sm ${usernameColor}">${messageData.username}</span>
-        ${banButtonHtml}
-      </div>
-      <p class="text-sm message-content-${key}"></p>
-      <span class="text-xs opacity-75 mt-1 block text-right">${new Date(messageData.createdAt).toLocaleTimeString()}</span>
-    </div>
-  `;
-  g();
-  chatMessagesEl.appendChild(messageElement);
-  g();
-  decryptData(messageData.encryptedText, messageData.iv).then(decryptedText => {
-    g();
-    const contentEl = messageElement.querySelector(`.message-content-${key}`);
-    g();
-    if (contentEl) {
-      g();
-      contentEl.textContent = decryptedText;
-      g();
-    }
-    g();
-  });
-  g();
-  if (globalUsername === ADMIN_USERNAME && !isMine) {
-    g();
-    const banBtn = messageElement.querySelector('.ban-button');
-    g();
-    if (banBtn && !banBtn.onclick) {
-      g();
-      banBtn.addEventListener('click', (e) => {
-        g();
-        const targetUid = e.target.dataset.uid;
-        g();
-        const targetUsername = e.target.dataset.username;
-        g();
-        if (confirm(`${targetUsername} kullanıcısını banlamak istediğinizden emin misiniz?`)) {
-          g();
-          banUser(targetUid);
-          g();
-        }
-        g();
-      });
-      g();
-    }
-    g();
-  }
-  g();
-}
-g();
-function sendMessage() {
-  g();
-  const messageText = messageInputEl.value.trim();
-  g();
-  if (messageText === '' || !isAuthReady || !globalUsername || !checkRateLimit()) {
-    g();
-    return;
-    g();
-  }
-  g();
-  if (messageText.length > 45) {
-    g();
-    alert("Mesaj 45 karakterden uzun olamaz!");
-    g();
-    return;
-    g();
-  }
-  g();
-  sendButtonEl.disabled = true;
-  g();
-  encryptData(messageText).then(encryptedData => {
-    g();
-    const chatRef = db.ref(CHAT_REF_PATH);
-    g();
-    chatRef.push({
-      userId: userId,
-      username: globalUsername,
-      encryptedText: encryptedData.cipherText,
-      iv: encryptedData.iv,
-      createdAt: firebase.database.ServerValue.TIMESTAMP
-    }).then(() => {
-      g();
-      const lastTimeRef = db.ref(`${LAST_MESSAGE_TIME_PATH}/${userId}/last_message_time`);
-      g();
-      lastTimeRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => {
-        g();
-        lastMessageTime = Date.now();
-        g();
-      }).catch(error => {
-        g();
-        console.error("Zaman Güncelleme Hatası:", error);
-        g();
-      });
-      g();
-      messageInputEl.value = '';
-      g();
+function toggleSiteStatus() {
+    const statusRef = db.ref(APP_STATUS_PATH);
+    const newStatus = !isAppClosed;
+  
+    statusRef.set(newStatus).then(() => {
+        console.log('Site durumu güncellendi:', newStatus);
     }).catch(error => {
-      g();
-      console.error("Mesaj Gönderme Hatası:", error);
-      g();
-      if (error.message.includes('PERMISSION_DENIED')) {
-        g();
-        alert('İzin reddedildi. Banlı olabilirsiniz veya site kapalı.');
-        g();
-      }
-      g();
-    }).finally(() => {
-      g();
-      checkRateLimit();
-      g();
+        console.error("Site Durumu Güncelleme Hatası:", error);
+        alert("Hata: Site durumunu güncelleyemediniz.");
     });
-    g();
-  }).catch(error => {
-    g();
-    console.error("Şifreleme Hatası:", error);
-    g();
-    checkRateLimit();
-    g();
-  });
-  g();
 }
-g();
-function checkUserRegistration() {
-  g();
-  if (!isAuthReady || !userId) {
-    g();
-    return;
-    g();
-  }
-  g();
-  const userRef = db.ref(`${USERS_PATH}/${userId}/username`);
-  g();
-  userRef.once('value').then((snapshot) => {
-    g();
-    if (snapshot.exists()) {
-      g();
-      globalUsername = snapshot.val();
-      g();
-      showLoadingScreen();
-      g();
-      setTimeout(() => {
-        g();
-        updateUIAccordingToStatus();
-        g();
-      }, 2000);
-      g();
-    } else {
-      g();
-      showStatusOverlay(true, "USERNAME", "");
-      g();
-    }
-    g();
-  }).catch(error => {
-    g();
-    console.error("Kullanıcı Kontrol Hatası:", error);
-    g();
-    if (error.message.includes('permission_denied')) {
-      g();
-      showStatusOverlay(true, "USERNAME", "");
-      g();
-    } else {
-      g();
-      showStatusOverlay(true, "LOADING", `Kullanıcı verisi alınamadı: ${error.message}`);
-      g();
-    }
-    g();
-  });
-  g();
-}
-g();
-function saveUsername() {
-  g();
-  const username = document.getElementById('username-input').value.trim();
-  g();
-  const usernameError = document.getElementById('username-error');
-  g();
-  const saveUsernameButton = document.getElementById('save-username-button');
-  g();
-  if (username.length === 0 || username.length > 12 || !/^[a-zA-Z0-9_]+$/.test(username)) {
-    g();
-    usernameError.textContent = "Kullanıcı adı 1-12 karakter olmalı ve sadece harf, rakam, _ içermeli.";
-    g();
-    return;
-    g();
-  }
-  g();
-  saveUsernameButton.disabled = true;
-  g();
-  usernameError.textContent = '';
-  g();
-  const usernameRef = db.ref(`${USERNAMES_PATH}/${username}`);
-  g();
-  usernameRef.transaction((currentData) => {
-    g();
-    if (currentData !== null && currentData !== userId) {
-      g();
-      return;
-      g();
-    }
-    g();
-    return userId;
-    g();
-  }).then((transactionResult) => {
-    g();
-    if (transactionResult.committed) {
-      g();
-      const userRef = db.ref(`${USERS_PATH}/${userId}/username`);
-      g();
-      userRef.set(username).then(() => {
-        g();
-        globalUsername = username;
-        g();
-        showLoadingScreen();
-        g();
-        setTimeout(() => {
-          g();
-          updateUIAccordingToStatus();
-          g();
-        }, 3000);
-        g();
-      }).catch(error => {
-        g();
-        console.error("Kullanıcı Adı Kaydetme Hatası:", error);
-        g();
-        usernameError.textContent = `Kaydetme hatası: ${error.message}`;
-        g();
-      });
-      g();
-    } else {
-      g();
-      usernameError.textContent = "Bu kullanıcı adı alınmış. Lütfen farklı bir ad deneyin.";
-      g();
-    }
-    g();
-    saveUsernameButton.disabled = false;
-    g();
-  }).catch(error => {
-    g();
-    console.error("Kullanıcı Adı Transaction Hatası:", error);
-    g();
-    usernameError.textContent = `Bir hata oluştu: ${error.message}`;
-    g();
-    saveUsernameButton.disabled = false;
-    g();
-  });
-  g();
-}
-g();
-function setupPresence() {
-  g();
-  if (!isAuthReady || !userId || !globalUsername) {
-    g();
-    return;
-    g();
-  }
-  g();
-  const presenceRef = db.ref(`${PRESENCE_PATH}/${userId}`);
-  g();
-  presenceRef.onDisconnect().remove();
-  g();
-  presenceRef.set({
-    username: globalUsername,
-    online: true
-  }).catch(error => {
-    g();
-    console.error("Mevcudiyet ayarı hatası:", error);
-    g();
-  });
-  g();
-}
-g();
-function listenToActiveUsers() {
-  g();
-  if (!isAuthReady) {
-    g();
-    return;
-    g();
-  }
-  g();
-  const activeUsersRef = db.ref(PRESENCE_PATH);
-  g();
-  const activeUsersListEl = document.getElementById('active-users-list');
-  g();
-  const activeUserCountEl = document.getElementById('active-user-count');
-  g();
-  if (activeUsersListener) {
-    g();
-    activeUsersRef.off('value', activeUsersListener);
-    g();
-  }
-  g();
-  activeUsersListener = (snapshot) => {
-    g();
-    const users = snapshot.val() || {};
-    g();
-    activeUsersListEl.innerHTML = '';
-    g();
-    const userArray = [];
-    g();
-    Object.keys(users).forEach(uid => {
-      g();
-      const userData = users[uid];
-      g();
-      if (userData && userData.online) {
-        g();
-        userArray.push({ uid, username: userData.username });
-        g();
-      }
-      g();
-    });
-    g();
-    activeUserCountEl.textContent = userArray.length;
-    g();
-    if (userArray.length === 0) {
-      g();
-      activeUsersListEl.innerHTML = '<li class="text-sm text-gray-500 dark:text-gray-400">Kimse çevrimiçi değil.</li>';
-      g();
-      return;
-      g();
-    }
-    g();
-    userArray.forEach(user => {
-      g();
-      const isCurrentUser = user.uid === userId;
-      g();
-      const isAdmin = user.username === ADMIN_USERNAME;
-      g();
-      const li = document.createElement('li');
-      g();
-      li.className = `text-sm p-2 rounded-lg ${isCurrentUser ? 'bg-indigo-100 dark:bg-indigo-900 font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-700'} flex justify-between items-center`;
-      g();
-      let nameDisplay = user.username || 'Bilinmeyen';
-      g();
-      if (isAdmin) {
-        g();
-        nameDisplay = `<span class="text-red-500 dark:text-red-400 font-bold">${nameDisplay} (Admin)</span>`;
-        g();
-      } else if (isCurrentUser) {
-        g();
-        nameDisplay = `${nameDisplay} (Sen)`;
-        g();
-      }
-      g();
-      li.innerHTML = nameDisplay;
-      g();
-      if (globalUsername === ADMIN_USERNAME && !isCurrentUser) {
-        g();
-        const banBtn = document.createElement('button');
-        g();
-        banBtn.textContent = 'Ban';
-        g();
-        banBtn.className = 'text-xs bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded-full transition duration-150 ml-2';
-        g();
-        if (!banBtn.onclick) {
-          g();
-          banBtn.addEventListener('click', () => {
-            g();
-            if (confirm(`${user.username || 'Kullanıcı'} kullanıcısını banlamak istediğinizden emin misiniz?`)) {
-              g();
-              banUser(user.uid);
-              g();
-            }
-            g();
-          });
-          g();
-        }
-        g();
-        li.appendChild(banBtn);
-        g();
-      }
-      g();
-      activeUsersListEl.appendChild(li);
-      g();
-    });
-    g();
-  };
-  g();
-  activeUsersRef.on('value', activeUsersListener);
-  g();
-}
-g();
-function startResetListener() {
-  g();
-  if (!isAuthReady || !db) {
-    g();
-    return;
-    g();
-  }
-  g();
-  const resetRef = db.ref(RESET_METADATA_PATH);
-  g();
-  if (resetListener) {
-    g();
-    resetRef.off('value', resetListener);
-    g();
-  }
-  g();
-  resetListener = (snapshot) => {
-    g();
-    let nextResetTime = snapshot.val();
-    g();
-    resetCounterEl.textContent = '--:--';
-    g();
-    if (!nextResetTime) {
-      g();
-      if (globalUsername === ADMIN_USERNAME) {
-        g();
-        nextResetTime = Date.now() + RESET_INTERVAL_MS;
-        g();
-        resetRef.set(nextResetTime);
-        g();
-      }
-      g();
-    }
-    g();
-    if (resetTimerInterval) {
-      g();
-      clearInterval(resetTimerInterval);
-      g();
-    }
-    g();
-    resetTimerInterval = setInterval(() => {
-      g();
-      const now = Date.now();
-      g();
-      const remaining = nextResetTime - now;
-      g();
-      if (remaining <= 0) {
-        g();
-        checkAndHandleReset(nextResetTime);
-        g();
-        clearInterval(resetTimerInterval);
-        g();
+function banUser(uid) {
+    if (uid === userId) {
+        console.warn("Kendi kendinizi banlayamazsınız.");
         return;
-        g();
-      }
-      g();
-      const totalSeconds = Math.floor(remaining / 1000);
-      g();
-      const minutes = Math.floor(totalSeconds / 60);
-      g();
-      const seconds = totalSeconds % 60;
-      g();
-      const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-      g();
-      resetCounterEl.textContent = formattedTime;
-      g();
-    }, 1000);
-    g();
-  };
-  g();
-  resetRef.on('value', resetListener, (error) => {
-    g();
-    console.error("Reset Dinleme Hatası:", error);
-    g();
-    resetCounterEl.textContent = 'Hata';
-    g();
-  });
-  g();
-}
-g();
-function checkAndHandleReset(oldResetTime) {
-  g();
-  const resetRef = db.ref(RESET_METADATA_PATH);
-  g();
-  resetRef.transaction((currentNextResetTime) => {
-    g();
-    if (currentNextResetTime !== oldResetTime) {
-      g();
-      return;
-      g();
     }
-    g();
-    return Date.now() + RESET_INTERVAL_MS;
-    g();
-  }).then((transactionResult) => {
-    g();
-    if (transactionResult.committed) {
-      g();
-      console.log("Sohbet döngüsü sıfırlandı.");
-      g();
-      if (globalUsername === ADMIN_USERNAME) {
-        g();
-        db.ref(ANNOUNCEMENTS_PATH).push({
-          text: "Sohbet Döngüsü Süresi Doldu ve Temizlendi.",
-          createdAt: firebase.database.ServerValue.TIMESTAMP
-        });
-        g();
-      }
-      g();
-      db.ref(CHAT_REF_PATH).remove();
-      g();
-    }
-    g();
-  }).catch(error => {
-    g();
-    console.error("Reset İşlemi Hatası:", error);
-    g();
-  });
-  g();
-}
-g();
-function init() {
-  g();
-  loadTheme();
-  g();
-  if (!sendButtonEl.onclick) {
-    g();
-    sendButtonEl.addEventListener('click', sendMessage);
-    g();
-  }
-  g();
-  if (!messageInputEl.onkeydown) {
-    g();
-    messageInputEl.addEventListener('keydown', (e) => {
-      g();
-      if (e.key === 'Enter' && !e.shiftKey) {
-        g();
-        e.preventDefault();
-        g();
-        sendMessage();
-        g();
-      }
-      g();
+    const banRef = db.ref(`${BANNED_USERS_PATH}/${uid}`);
+    banRef.set(true).then(() => {
+        console.log("Kullanıcı banlandı:", uid);
+        displayAnnouncement(`${uid.slice(-6)} ID'li kullanıcı banlandı.`);
+    }).catch(error => {
+        console.error("Kullanıcı Banlama Hatası:", error);
+        alert("Banlama hatası: " + error.message);
     });
-    g();
-  }
-  g();
-  if (!messageInputEl.oninput) {
-    g();
-    messageInputEl.addEventListener('input', checkRateLimit);
-    g();
-  }
-  g();
-  if (!themeToggleEl.onclick) {
-    g();
-    themeToggleEl.addEventListener('click', toggleTheme);
-    g();
-  }
-  g();
-  try {
-    g();
-    firebase.initializeApp(firebaseConfig);
-    g();
-    db = firebase.database();
-    g();
-    auth = firebase.auth();
-    g();
-    auth.onAuthStateChanged((user) => {
-      g();
-      if (user) {
-        g();
-        userId = user.uid;
-        g();
-        userStatusEl.textContent = "Bağlandı (Anonim)";
-        g();
-        isAuthReady = true;
-        g();
-        showLoadingScreen();
-        g();
+}
+function unbanUser(uid) {
+    const banRef = db.ref(`${BANNED_USERS_PATH}/${uid}`);
+    banRef.remove().then(() => {
+        console.log("Ban kaldırıldı:", uid);
+    }).catch(error => {
+        console.error("Kullanıcı Ban Kaldırma Hatası:", error);
+        alert("Ban kaldırma hatası: " + error.message);
+    });
+}
+function sendAnnouncement() {
+    const announcementText = document.getElementById('announcement-input').value.trim();
+    if (!announcementText) return;
+    const announcementRef = db.ref(ANNOUNCEMENTS_PATH);
+    announcementRef.push({
+        text: announcementText,
+        createdAt: firebase.database.ServerValue.TIMESTAMP
+    }).then(() => {
+        document.getElementById('announcement-input').value = '';
+        displayAnnouncement(announcementText);
+    }).catch(error => {
+        console.error("Duyuru Gönderme Hatası:", error);
+        alert("Hata: Duyuru gönderilemedi.");
+    });
+}
+function listenToBannedUsers() {
+    const bannedRef = db.ref(BANNED_USERS_PATH);
+    const bannedUsersListEl = document.getElementById('banned-users-list');
+    if (!bannedUsersListEl || globalUsername !== ADMIN_USERNAME) return;
+    if (bannedRef.off) bannedRef.off('value');
+    bannedRef.on('value', (snapshot) => {
+        const bannedUidsObj = snapshot.val() || {};
+        const bannedUids = Object.keys(bannedUidsObj);
+        bannedUsersListEl.innerHTML = '';
+      
+        if (bannedUids.length === 0) {
+            bannedUsersListEl.innerHTML = '<li class="text-sm text-gray-500 dark:text-gray-400">Banlı kullanıcı yok.</li>';
+            return;
+        }
+        const usernamePromises = bannedUids.map(uid => {
+            const userRef = db.ref(`${USERS_PATH}/${uid}/username`);
+            return userRef.once('value').then(userSnapshot => {
+                return { uid, username: userSnapshot.val() || `Bilinmeyen (${uid.slice(-6)})` };
+            });
+        });
+        Promise.all(usernamePromises).then(users => {
+            users.forEach(({ uid, username }) => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center text-red-600 dark:text-red-400 font-medium";
+                li.innerHTML = `
+                    <span>${username}</span>
+                    <button data-uid="${uid}" class="unban-button text-xs bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded-full transition duration-150">
+                        Banı Kaldır
+                    </button>
+                `;
+                bannedUsersListEl.appendChild(li);
+            });
+            document.querySelectorAll('.unban-button').forEach(button => {
+                if (!button.onclick) button.addEventListener('click', (e) => unbanUser(e.target.dataset.uid));
+            });
+        }).catch(error => {
+            console.error("Banlı kullanıcılar yüklenirken hata:", error);
+        });
+    });
+}
+function listenToAppStatus() {
+    if (!userId) return;
+    const statusRef = db.ref(APP_STATUS_PATH);
+    const bannedRef = db.ref(`${BANNED_USERS_PATH}/${userId}`);
+    if (appStatusListener) statusRef.off('value', appStatusListener);
+    if (banListener) bannedRef.off('value', banListener);
+    appStatusListener = (snapshot) => {
+        isAppClosed = snapshot.val() === true;
+        if (isAuthReady) updateUIAccordingToStatus();
+        const statusTextEl = document.getElementById('site-status-text');
+        const toggleButtonEl = document.getElementById('toggle-site-button');
+        if (statusTextEl && toggleButtonEl) {
+            statusTextEl.textContent = isAppClosed ? 'KAPALI' : 'AÇIK';
+            toggleButtonEl.textContent = `Siteyi ${isAppClosed ? 'AÇ' : 'KAPAT'}`;
+            const statusDiv = toggleButtonEl.closest('.p-4');
+            if (statusDiv) {
+                statusDiv.className = statusDiv.className.replace(/bg-(red|green)-100|dark:bg-(red|green)-900/g, '');
+                statusDiv.classList.add(isAppClosed ? 'bg-red-100 dark:bg-red-900' : 'bg-green-100 dark:bg-green-900');
+            }
+            toggleButtonEl.className = toggleButtonEl.className.replace(/bg-(red|green)-(600|700)|hover:bg-(red|green)-(600|700)/g, '');
+            toggleButtonEl.classList.add(isAppClosed ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700');
+        }
+    };
+    statusRef.on('value', appStatusListener);
+  
+    banListener = (snapshot) => {
+        isBanned = snapshot.exists();
+        if (isAuthReady) updateUIAccordingToStatus();
+    };
+    bannedRef.on('value', banListener);
+  
+    const announcementRef = db.ref(ANNOUNCEMENTS_PATH).limitToLast(1);
+    if (announcementListener) announcementRef.off('child_added', announcementListener);
+    announcementListener = (snapshot) => {
+        const data = snapshot.val();
+        if (data && Date.now() - data.createdAt < 5000) {
+            displayAnnouncement(data.text);
+        }
+    };
+    announcementRef.on('child_added', announcementListener);
+}
+function listenToMessages() {
+     if (!isAuthReady || !globalUsername || !db) return;
+    if (chatListener) {
+        db.ref(CHAT_REF_PATH).off('child_added', chatListener);
+    }
+    const chatRef = db.ref(CHAT_REF_PATH).orderByChild("createdAt").limitToLast(50);
+    chatMessagesEl.innerHTML = '<p id="empty-message" class="text-center text-gray-500 dark:text-gray-400">Sohbet Geçmişi Yükleniyor...</p>';
+  
+    chatListener = (snapshot) => {
+        const emptyMessageEl = document.getElementById('empty-message');
+        if (emptyMessageEl) { emptyMessageEl.remove(); }
+        const messageData = snapshot.val();
+        const key = snapshot.key;
+        if (messageData) {
+            decryptAndDisplayMessage(messageData, key);
+        }
+      
         setTimeout(() => {
-          g();
-          listenToAppStatus();
-          g();
-          updateUIAccordingToStatus();
-          g();
-        }, 1500);
-        g();
-      } else {
-        g();
-        userStatusEl.textContent = "Kimlik doğrulanıyor...";
-        g();
-        showLoadingScreen();
-        g();
-        auth.signInAnonymously().catch((error) => {
-          g();
-          console.error("Anonim oturum açma hatası:", error);
-          g();
-          userStatusEl.textContent = "Kimlik Hatası!";
-          g();
-          showStatusOverlay(true, "LOADING", "Giriş yapılamadı.");
-          g();
-        });
-        g();
-      }
-      g();
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        }, 0);
+    };
+    chatRef.on('child_added', chatListener, (error) => {
+        console.error("Realtime DB Dinleme Hatası:", error);
+        chatMessagesEl.innerHTML = '<p class="text-center text-red-500">Sohbet yüklenemedi.</p>';
     });
-    g();
-  } catch (error) {
-    g();
-    userStatusEl.textContent = "Bağlantı Hatası!";
-    g();
-    showStatusOverlay(true, "LOADING", "Firebase başlatılamadı.");
-    g();
-    console.error("Firebase Başlatma Hatası:", error);
-    g();
-  }
-  g();
+    setTimeout(() => {
+        const emptyEl = document.getElementById('empty-message');
+        if (emptyEl) {
+            emptyEl.textContent = 'Henüz mesaj yok. İlk mesajı siz atın!';
+        }
+    }, 1000);
 }
-g();
+function updateUIAccordingToStatus() {
+    if (!isAuthReady) return;
+    if (isBanned && globalUsername !== ADMIN_USERNAME) {
+        showStatusOverlay(true, "YASAKLANDI", "Bu sohbet odasına erişiminiz kalıcı olarak engellenmiştir.", 'red');
+        return;
+    }
+    if (isAppClosed && globalUsername !== ADMIN_USERNAME) {
+        showStatusOverlay(true, "BAKIMDA", "Site şu anda Kapalı veya Bakım Modundadır.", 'yellow');
+        return;
+    }
+  
+    if (globalUsername) {
+        showAppContent(globalUsername);
+    } else {
+        showStatusOverlay(true, "USERNAME", "");
+        checkUserRegistration();
+    }
+}
+function showLoadingScreen() {
+    showStatusOverlay(true, "LOADING", "Kullanıcı verileri kontrol ediliyor ve sohbet yükleniyor...");
+}
+function showStatusOverlay(show, title, message, color) {
+    if (show) {
+        appContentEl.classList.add('hidden');
+        statusOverlayEl.classList.remove('hidden');
+        statusOverlayEl.classList.add('flex', 'flex-col');
+      
+        if (title === "LOADING") {
+            statusOverlayEl.innerHTML = `
+                <svg class="animate-spin h-8 w-8 text-indigo-600 dark:text-indigo-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <p id="loading-text">${message}</p>
+            `;
+        } else if (title === "USERNAME") {
+             const usernameHtml = `
+                <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Kullanıcı Adı Oluşturun</h2>
+                <p class="mb-6 text-gray-600 dark:text-gray-400">Sohbete katılmak için benzersiz bir kullanıcı adı belirleyin (Max 12 karakter).</p>
+                <input type="text" id="username-input" class="w-full max-w-sm p-3 border rounded-lg placeholder-gray-500 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" placeholder="Kullanıcı adınız..." maxlength="12">
+                <button id="save-username-button" class="w-full max-w-sm mt-4 bg-indigo-600 text-white p-3 rounded-lg shadow-md hover:bg-indigo-700 transition duration-150">
+                    Kaydet ve Sohbete Katıl
+                </button>
+                <p id="username-error" class="text-xs mt-3 text-red-500 font-medium"></p>
+             `;
+             statusOverlayEl.innerHTML = usernameHtml;
+             const saveBtn = document.getElementById('save-username-button');
+             if (saveBtn && !saveBtn.onclick) saveBtn.addEventListener('click', saveUsername);
+             const inputEl = document.getElementById('username-input');
+             if (inputEl && !inputEl.onkeydown) inputEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); saveUsername(); }
+             });
+        } else {
+            statusOverlayEl.innerHTML = `
+                <div class="p-8 rounded-xl shadow-lg bg-gray-100 dark:bg-gray-800 border-t-4 border-${color}-500">
+                    <h2 class="text-3xl font-bold mb-2 text-${color}-600 dark:text-${color}-400">${title}</h2>
+                    <p class="text-lg text-gray-600 dark:text-gray-300">${message}</p>
+                    <p class="text-sm mt-4 text-gray-500 dark:text-gray-400">Lütfen daha sonra tekrar deneyin.</p>
+                </div>
+            `;
+        }
+    } else {
+        statusOverlayEl.classList.add('hidden');
+        appContentEl.classList.remove('hidden');
+        appContentEl.classList.add('flex');
+    }
+}
+function showAppContent(username) {
+    showStatusOverlay(false);
+    currentUserInfoEl.textContent = `${username} (ID: ...${userId.slice(-6)})`;
+    sendButtonEl.disabled = false;
+  
+    toggleAdminButton();
+    setupPresence();
+    listenToActiveUsers();
+    listenToMessages();
+    startResetListener();
+}
+function displayAnnouncement(text) {
+    announcementToastEl.textContent = text;
+    announcementToastEl.classList.remove('hidden');
+    announcementToastEl.classList.remove('announcement');
+    setTimeout(() => {
+         announcementToastEl.classList.add('announcement');
+    }, 10);
+  
+    setTimeout(() => {
+        announcementToastEl.classList.add('hidden');
+        announcementToastEl.classList.remove('announcement');
+    }, 5000);
+}
+function decryptAndDisplayMessage(messageData, key) {
+    const isMine = messageData.userId === userId;
+    const messageElement = document.createElement('div');
+    messageElement.className = `flex ${isMine ? 'justify-end' : 'justify-start'}`;
+    const usernameColor = messageData.userId === userId ? 'text-indigo-400' :
+                          messageData.username === ADMIN_USERNAME ? 'text-red-500' :
+                          'text-green-400';
+  
+    let banButtonHtml = '';
+    if (globalUsername === ADMIN_USERNAME && !isMine) {
+        banButtonHtml = `<button data-uid="${messageData.userId}" data-username="${messageData.username}" class="ban-button text-xs bg-red-500 hover:bg-red-700 text-white py-0.5 px-2 ml-2 rounded-full transition duration-150">Ban</button>`;
+    }
+    messageElement.innerHTML = `
+        <div class="chat-bubble p-3 rounded-xl shadow-md ${isMine ? 'bg-indigo-600 dark:bg-indigo-700 text-white rounded-br-none' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded-tl-none'}">
+            <div class="flex items-center mb-1">
+                <span class="font-bold text-sm ${usernameColor}">${messageData.username}</span>
+                ${banButtonHtml}
+            </div>
+            <p class="text-sm message-content-${key}"></p>
+            <span class="text-xs opacity-75 mt-1 block text-right">${new Date(messageData.createdAt).toLocaleTimeString()}</span>
+        </div>
+    `;
+    chatMessagesEl.appendChild(messageElement);
+    decryptData(messageData.encryptedText, messageData.iv).then(decryptedText => {
+        const contentEl = messageElement.querySelector(`.message-content-${key}`);
+        if (contentEl) contentEl.textContent = decryptedText;
+    });
+  
+    if (globalUsername === ADMIN_USERNAME && !isMine) {
+        const banBtn = messageElement.querySelector('.ban-button');
+        if (banBtn && !banBtn.onclick) {
+            banBtn.addEventListener('click', (e) => {
+                const targetUid = e.target.dataset.uid;
+                const targetUsername = e.target.dataset.username;
+                if (confirm(`${targetUsername} kullanıcısını banlamak istediğinizden emin misiniz?`)) {
+                    banUser(targetUid);
+                }
+            });
+        }
+    }
+}
+function sendMessage() {
+    const messageText = messageInputEl.value.trim();
+    if (messageText === '' || !isAuthReady || !globalUsername || !checkRateLimit()) return;
+    if (messageText.length > 45) {
+        alert("Mesaj 45 karakterden uzun olamaz!");
+        return;
+    }
+    sendButtonEl.disabled = true;
+    encryptData(messageText).then(encryptedData => {
+        const chatRef = db.ref(CHAT_REF_PATH);
+        chatRef.push({
+            userId: userId,
+            username: globalUsername,
+            encryptedText: encryptedData.cipherText,
+            iv: encryptedData.iv,
+            createdAt: firebase.database.ServerValue.TIMESTAMP
+        }).then(() => {
+            const lastTimeRef = db.ref(`${LAST_MESSAGE_TIME_PATH}/${userId}/last_message_time`);
+            lastTimeRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => {
+                lastMessageTime = Date.now();
+            }).catch(error => {
+                console.error("Zaman Güncelleme Hatası:", error);
+            });
+            messageInputEl.value = '';
+        }).catch(error => {
+            console.error("Mesaj Gönderme Hatası:", error);
+            if (error.message.includes('PERMISSION_DENIED')) {
+                alert('İzin reddedildi. Banlı olabilirsiniz veya site kapalı.');
+            }
+        }).finally(() => {
+            checkRateLimit();
+        });
+    }).catch(error => {
+        console.error("Şifreleme Hatası:", error);
+        checkRateLimit();
+    });
+}
+function checkUserRegistration() {
+    if (!isAuthReady || !userId) return;
+    const userRef = db.ref(`${USERS_PATH}/${userId}/username`);
+    userRef.once('value').then((snapshot) => {
+        if (snapshot.exists()) {
+            globalUsername = snapshot.val();
+            showLoadingScreen();
+            setTimeout(() => {
+                updateUIAccordingToStatus();
+            }, 2000);
+        } else {
+            showStatusOverlay(true, "USERNAME", "");
+        }
+    }).catch(error => {
+        console.error("Kullanıcı Kontrol Hatası:", error);
+        if (error.message.includes('permission_denied')) {
+            showStatusOverlay(true, "USERNAME", "");
+        } else {
+            showStatusOverlay(true, "LOADING", `Kullanıcı verisi alınamadı: ${error.message}`);
+        }
+    });
+}
+function saveUsername() {
+    const username = document.getElementById('username-input').value.trim();
+    const usernameError = document.getElementById('username-error');
+    const saveUsernameButton = document.getElementById('save-username-button');
+  
+    if (username.length === 0 || username.length > 12 || !/^[a-zA-Z0-9_]+$/.test(username)) {
+        usernameError.textContent = "Kullanıcı adı 1-12 karakter olmalı ve sadece harf, rakam, _ içermeli.";
+        return;
+    }
+    saveUsernameButton.disabled = true;
+    usernameError.textContent = '';
+    const usernameRef = db.ref(`${USERNAMES_PATH}/${username}`);
+    usernameRef.transaction((currentData) => {
+        if (currentData !== null && currentData !== userId) return;
+        return userId;
+    }).then((transactionResult) => {
+        if (transactionResult.committed) {
+            const userRef = db.ref(`${USERS_PATH}/${userId}/username`);
+            userRef.set(username).then(() => {
+                globalUsername = username;
+                showLoadingScreen();
+                setTimeout(() => {
+                    updateUIAccordingToStatus();
+                }, 3000);
+            }).catch(error => {
+                console.error("Kullanıcı Adı Kaydetme Hatası:", error);
+                usernameError.textContent = `Kaydetme hatası: ${error.message}`;
+            });
+        } else {
+            usernameError.textContent = "Bu kullanıcı adı alınmış. Lütfen farklı bir ad deneyin.";
+        }
+        saveUsernameButton.disabled = false;
+    }).catch(error => {
+        console.error("Kullanıcı Adı Transaction Hatası:", error);
+        usernameError.textContent = `Bir hata oluştu: ${error.message}`;
+        saveUsernameButton.disabled = false;
+    });
+}
+function setupPresence() {
+    if (!isAuthReady || !userId || !globalUsername) return;
+    const presenceRef = db.ref(`${PRESENCE_PATH}/${userId}`);
+    presenceRef.onDisconnect().remove();
+    presenceRef.set({
+        username: globalUsername,
+        online: true
+    }).catch(error => {
+        console.error("Mevcudiyet ayarı hatası:", error);
+    });
+}
+function listenToActiveUsers() {
+    if (!isAuthReady) return;
+    const activeUsersRef = db.ref(PRESENCE_PATH);
+    const activeUsersListEl = document.getElementById('active-users-list');
+    const activeUserCountEl = document.getElementById('active-user-count');
+  
+    if (activeUsersListener) activeUsersRef.off('value', activeUsersListener);
+  
+    activeUsersListener = (snapshot) => {
+        const users = snapshot.val() || {};
+        activeUsersListEl.innerHTML = '';
+        const userArray = [];
+        Object.keys(users).forEach(uid => {
+            const userData = users[uid];
+            if (userData && userData.online) {
+                userArray.push({ uid, username: userData.username });
+            }
+        });
+      
+        activeUserCountEl.textContent = userArray.length;
+        if (userArray.length === 0) {
+            activeUsersListEl.innerHTML = '<li class="text-sm text-gray-500 dark:text-gray-400">Kimse çevrimiçi değil.</li>';
+            return;
+        }
+        userArray.forEach(user => {
+            const isCurrentUser = user.uid === userId;
+            const isAdmin = user.username === ADMIN_USERNAME;
+            const li = document.createElement('li');
+            li.className = `text-sm p-2 rounded-lg ${isCurrentUser ? 'bg-indigo-100 dark:bg-indigo-900 font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-700'} flex justify-between items-center`;
+          
+            let nameDisplay = user.username || 'Bilinmeyen';
+            if (isAdmin) {
+                nameDisplay = `<span class="text-red-500 dark:text-red-400 font-bold">${nameDisplay} (Admin)</span>`;
+            } else if (isCurrentUser) {
+                nameDisplay = `${nameDisplay} (Sen)`;
+            }
+            li.innerHTML = nameDisplay;
+            if (globalUsername === ADMIN_USERNAME && !isCurrentUser) {
+                const banBtn = document.createElement('button');
+                banBtn.textContent = 'Ban';
+                banBtn.className = 'text-xs bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded-full transition duration-150 ml-2';
+                if (!banBtn.onclick) banBtn.addEventListener('click', () => {
+                     if (confirm(`${user.username || 'Kullanıcı'} kullanıcısını banlamak istediğinizden emin misiniz?`)) {
+                        banUser(user.uid);
+                    }
+                });
+                li.appendChild(banBtn);
+            }
+          
+            activeUsersListEl.appendChild(li);
+        });
+    };
+    activeUsersRef.on('value', activeUsersListener);
+}
+function startResetListener() {
+    if (!isAuthReady || !db) return;
+    const resetRef = db.ref(RESET_METADATA_PATH);
+    if (resetListener) resetRef.off('value', resetListener);
+  
+    resetListener = (snapshot) => {
+        let nextResetTime = snapshot.val();
+        resetCounterEl.textContent = '--:--';
+      
+        if (!nextResetTime) {
+            if (globalUsername === ADMIN_USERNAME) {
+                nextResetTime = Date.now() + RESET_INTERVAL_MS;
+                resetRef.set(nextResetTime);
+            }
+        }
+        if (resetTimerInterval) clearInterval(resetTimerInterval);
+        resetTimerInterval = setInterval(() => {
+            const now = Date.now();
+            const remaining = nextResetTime - now;
+            if (remaining <= 0) {
+                checkAndHandleReset(nextResetTime);
+                clearInterval(resetTimerInterval);
+                return;
+            }
+            const totalSeconds = Math.floor(remaining / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            resetCounterEl.textContent = formattedTime;
+        }, 1000);
+    };
+    resetRef.on('value', resetListener, (error) => {
+        console.error("Reset Dinleme Hatası:", error);
+        resetCounterEl.textContent = 'Hata';
+    });
+}
+function checkAndHandleReset(oldResetTime) {
+    const resetRef = db.ref(RESET_METADATA_PATH);
+    resetRef.transaction((currentNextResetTime) => {
+        if (currentNextResetTime !== oldResetTime) {
+            return;
+        }
+        return Date.now() + RESET_INTERVAL_MS;
+    }).then((transactionResult) => {
+        if (transactionResult.committed) {
+            console.log("Sohbet döngüsü sıfırlandı.");
+            if (globalUsername === ADMIN_USERNAME) {
+                db.ref(ANNOUNCEMENTS_PATH).push({
+                    text: "Sohbet Döngüsü Süresi Doldu ve Temizlendi.",
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                });
+            }
+            db.ref(CHAT_REF_PATH).remove();
+        }
+    }).catch(error => {
+        console.error("Reset İşlemi Hatası:", error);
+    });
+}
+function init() {
+    loadTheme();
+  
+    if (!sendButtonEl.onclick) sendButtonEl.addEventListener('click', sendMessage);
+    if (!messageInputEl.onkeydown) messageInputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    if (!messageInputEl.oninput) messageInputEl.addEventListener('input', checkRateLimit);
+    if (!themeToggleEl.onclick) themeToggleEl.addEventListener('click', toggleTheme);
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        auth = firebase.auth();
+      
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                userId = user.uid;
+                userStatusEl.textContent = "Bağlandı (Anonim)";
+                isAuthReady = true;
+                showLoadingScreen();
+                setTimeout(() => {
+                    listenToAppStatus();
+                    updateUIAccordingToStatus();
+                }, 1500);
+            } else {
+                userStatusEl.textContent = "Kimlik doğrulanıyor...";
+                showLoadingScreen();
+                auth.signInAnonymously().catch((error) => {
+                    console.error("Anonim oturum açma hatası:", error);
+                    userStatusEl.textContent = "Kimlik Hatası!";
+                    showStatusOverlay(true, "LOADING", "Giriş yapılamadı.");
+                });
+            }
+        });
+    } catch (error) {
+        userStatusEl.textContent = "Bağlantı Hatası!";
+        showStatusOverlay(true, "LOADING", "Firebase başlatılamadı.");
+        console.error("Firebase Başlatma Hatası:", error);
+    }
+}
 window.onload = init;
-g();
