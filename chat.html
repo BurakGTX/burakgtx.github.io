@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔒 Güvenli Sohbet (Admin & Güvenlik)</title>
+    <title>Güvenli Mesajlaşma (Admin & Güvenlik)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-       
+      
         :root {
             --bg-body: #f0f4f8;
             --bg-card: #ffffff;
@@ -39,7 +39,7 @@
         #chat-messages::-webkit-scrollbar, #active-users-list::-webkit-scrollbar, #banned-users-list::-webkit-scrollbar {
             display: none;
         }
-       
+      
         /* Duyuru animasyonu */
         .announcement {
             animation: slideDown 0.5s ease-out, fadeOut 0.5s ease-in 4.5s forwards;
@@ -51,6 +51,25 @@
         @keyframes fadeOut {
             to { opacity: 0; display: none; }
         }
+
+        /* Mobil için sidebar toggle */
+        @media (max-width: 768px) {
+            #active-users-sidebar {
+                position: fixed;
+                top: 0;
+                right: -100%;
+                height: 100vh;
+                width: 80%;
+                z-index: 30;
+                transition: right 0.3s ease-in-out;
+            }
+            #active-users-sidebar.open {
+                right: 0;
+            }
+            #sidebar-toggle {
+                display: block;
+            }
+        }
     </style>
     <script>
         tailwind.config = {
@@ -59,23 +78,22 @@
     </script>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4 transition-colors duration-300">
-    <!-- Global Duyuru Toast -->
+
     <div id="announcement-toast" class="fixed top-0 left-1/2 -translate-x-1/2 mt-4 p-3 rounded-lg shadow-xl
                                         bg-yellow-500 text-white font-semibold z-50 announcement hidden"
                                         style="min-width: 300px;">
-        <!-- Duyuru metni buraya gelecek -->
+
     </div>
-    <!-- Ana Konteyner -->
+
     <div class="w-full max-w-4xl rounded-xl shadow-2xl h-[90vh] flex flex-col relative transition-colors duration-300
                 bg-white dark:bg-gray-900 text-gray-800 dark:text-white">
         <!-- Başlık -->
         <header class="bg-indigo-600 dark:bg-indigo-800 p-4 rounded-t-xl text-white shadow-lg flex justify-between items-center flex-shrink-0 z-0">
-            <h1 class="text-xl font-bold">🔒 Güvenli Mesajlaşma</h1>
-           
-            <!-- Sağ Başlık Elemanları: Admin, Sayaç ve Tema -->
+            <h1 class="text-xl font-bold">Güvenli Mesajlaşma</h1>
+          
+
             <div class="flex items-center space-x-3">
-               
-                <!-- Admin Butonu (Sadece burakx için) -->
+              
                 <button id="admin-button" class="p-2 rounded-full hover:bg-red-600 transition duration-150 hidden" title="Yönetici Paneli">
                     <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707l-.707-.707V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"></path></svg>
                 </button>
@@ -89,23 +107,26 @@
                 <span id="user-status" class="text-sm bg-indigo-700 dark:bg-indigo-900 py-1 px-3 rounded-full">Bağlanıyor...</span>
             </div>
         </header>
-        <!-- YÜKLENİYOR / ADMIN / USERNAME MODALLARI (Z-20) -->
-        <!-- Bu katmanda Site Kapalı/Banlı Uyarısı da yönetilir. -->
+
+        <button id="sidebar-toggle" class="md:hidden p-2 bg-indigo-600 text-white rounded-lg m-4 hidden">
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+
         <div id="status-overlay" class="absolute inset-0 z-20 rounded-b-xl flex flex-col justify-center items-center text-center p-8 transition-colors duration-300
                     bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">
-            <!-- İçerik burada JS ile değiştirilecektir (Loading, Username, Banned, Maintenance) -->
+
         </div>
-        <!-- SOHBET ve SIDEBAR Konteyneri (Asıl Uygulama İçeriği) -->
+    
         <div id="app-content" class="flex flex-row flex-grow w-full h-full hidden">
-           
-            <!-- SOHBET EKRANI (Sol/Geniş Kısım) -->
-            <div id="chat-container" class="flex flex-col w-3/4 border-r border-gray-200 dark:border-gray-700">
-               
-                <!-- Mesaj Alanı -->
+          
+
+            <div id="chat-container" class="flex flex-col flex-1 border-r border-gray-200 dark:border-gray-700 md:w-3/4 w-full">
+              
+
                 <div id="chat-messages" class="flex-grow p-4 space-y-4 overflow-y-auto">
-                    <!-- Mesajlar buraya eklenecek -->
+
                 </div>
-                <!-- Kullanıcı Bilgisi ve Girdi Alanı (Footer) -->
+
                 <footer class="p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
                     <div id="user-info-bar" class="text-xs mb-2 p-1 rounded-lg
                                 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex justify-between">
@@ -122,8 +143,8 @@
                     </div>
                 </footer>
             </div>
-            <!-- AKTİF KULLANICILAR SIDEBAR'I (Sağ/Dar Kısım) -->
-            <div id="active-users-sidebar" class="w-1/4 rounded-br-xl p-4 flex flex-col flex-shrink-0
+
+            <div id="active-users-sidebar" class="md:w-1/4 w-full rounded-br-xl p-4 flex flex-col flex-shrink-0
                                 bg-gray-50 dark:bg-gray-800">
                 <div class="mb-4 pb-2 border-b border-gray-300 dark:border-gray-700">
                     <h2 class="text-lg font-semibold flex justify-between items-center
@@ -138,11 +159,11 @@
             </div>
         </div>
     </div>
-    <!-- Firebase SDK 8.10.0 -->
+
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <!-- Uygulama Betiği -->
+
     <script src="0xjs2.js"></script>
 </body>
 </html>
