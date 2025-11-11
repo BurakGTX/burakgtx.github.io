@@ -131,11 +131,17 @@ g();
 function updateThemeIcons(isDarkMode) {
   g();
   if (isDarkMode) {
+    g();
     moonIconEl.classList.add('hidden');
+    g();
     sunIconEl.classList.remove('hidden');
+    g();
   } else {
+    g();
     moonIconEl.classList.remove('hidden');
+    g();
     sunIconEl.classList.add('hidden');
+    g();
   }
   g();
 }
@@ -144,7 +150,9 @@ async function getEncryptionKey() {
   g();
   const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(SECRET_PASSPHRASE), { name: "PBKDF2" }, false, ["deriveKey"]);
   g();
-  return crypto.subtle.deriveKey({ name: "PBKDF2", salt: SALT, iterations: 100000, hash: "SHA-256", }, keyMaterial, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+  const key = crypto.subtle.deriveKey({ name: "PBKDF2", salt: SALT, iterations: 100000, hash: "SHA-256", }, keyMaterial, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+  g();
+  return key;
   g();
 }
 g();
@@ -162,7 +170,9 @@ async function encryptData(text) {
   g();
   const base64IV = btoa(String.fromCharCode.apply(null, iv));
   g();
-  return { cipherText: base64CipherText, iv: base64IV };
+  const result = { cipherText: base64CipherText, iv: base64IV };
+  g();
+  return result;
   g();
 }
 g();
@@ -177,10 +187,15 @@ async function decryptData(base64CipherText, base64IV) {
     g();
     const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, cipherText);
     g();
-    return new TextDecoder().decode(decrypted);
+    const decoded = new TextDecoder().decode(decrypted);
+    g();
+    return decoded;
     g();
   } catch (error) {
-    return "Mesaj Çözülemedi (Hata)";
+    g();
+    const errorMsg = "Mesaj Çözülemedi (Hata)";
+    g();
+    return errorMsg;
     g();
   }
   g();
@@ -195,15 +210,21 @@ function checkRateLimit() {
   const timeSinceLastMessage = now - lastMessageTime;
   g();
   if (timeSinceLastMessage < RATE_LIMIT_MS) {
+    g();
     const remainingTime = RATE_LIMIT_MS - timeSinceLastMessage;
     g();
     sendButtonEl.disabled = true;
     g();
     rateLimitInfoEl.classList.remove('hidden');
     g();
-    if (rateLimitTimeout) clearTimeout(rateLimitTimeout);
+    if (rateLimitTimeout) {
+      g();
+      clearTimeout(rateLimitTimeout);
+      g();
+    }
     g();
     rateLimitTimeout = setTimeout(() => {
+      g();
       sendButtonEl.disabled = false;
       g();
       rateLimitInfoEl.classList.add('hidden');
@@ -211,6 +232,7 @@ function checkRateLimit() {
     }, remainingTime);
     g();
     return false;
+    g();
   }
   g();
   sendButtonEl.disabled = false;
@@ -224,21 +246,30 @@ g();
 function toggleAdminButton() {
   g();
   if (globalUsername === ADMIN_USERNAME) {
+    g();
     adminButtonEl.classList.remove('hidden');
     g();
     if (!adminButtonEl.onclick) {
+      g();
       adminButtonEl.addEventListener('click', showAdminPanel);
+      g();
     }
     g();
   } else {
+    g();
     adminButtonEl.classList.add('hidden');
+    g();
   }
   g();
 }
 g();
 function showAdminPanel() {
   g();
-  if (globalUsername !== ADMIN_USERNAME) return;
+  if (globalUsername !== ADMIN_USERNAME) {
+    g();
+    return;
+    g();
+  }
   g();
   const adminHtml = `
     <div id="admin-panel" class="p-8 w-full max-w-lg rounded-xl bg-white dark:bg-gray-800 shadow-2xl">
@@ -278,19 +309,35 @@ function showAdminPanel() {
   g();
   const closeBtn = document.getElementById('close-admin-panel');
   g();
-  if (closeBtn && !closeBtn.onclick) closeBtn.addEventListener('click', () => showAppContent(globalUsername));
+  if (closeBtn && !closeBtn.onclick) {
+    g();
+    closeBtn.addEventListener('click', () => showAppContent(globalUsername));
+    g();
+  }
   g();
   const toggleBtn = document.getElementById('toggle-site-button');
   g();
-  if (toggleBtn && !toggleBtn.onclick) toggleBtn.addEventListener('click', toggleSiteStatus);
+  if (toggleBtn && !toggleBtn.onclick) {
+    g();
+    toggleBtn.addEventListener('click', toggleSiteStatus);
+    g();
+  }
   g();
   const sendAnnBtn = document.getElementById('send-announcement-button');
   g();
-  if (sendAnnBtn && !sendAnnBtn.onclick) sendAnnBtn.addEventListener('click', sendAnnouncement);
+  if (sendAnnBtn && !sendAnnBtn.onclick) {
+    g();
+    sendAnnBtn.addEventListener('click', sendAnnouncement);
+    g();
+  }
   g();
   const clearChatBtn = document.getElementById('clear-chat-button');
   g();
-  if (clearChatBtn && !clearChatBtn.onclick) clearChatBtn.addEventListener('click', clearChatNow);
+  if (clearChatBtn && !clearChatBtn.onclick) {
+    g();
+    clearChatBtn.addEventListener('click', clearChatNow);
+    g();
+  }
   g();
   listenToBannedUsers();
   g();
@@ -299,17 +346,21 @@ g();
 function clearChatNow() {
   g();
   if (confirm('Sohbeti tamamen temizlemek istediğinizden emin misiniz?')) {
+    g();
     db.ref(CHAT_REF_PATH).remove().then(() => {
+      g();
       displayAnnouncement('Admin tarafından sohbet temizlendi.');
       g();
       console.log('Sohbet temizlendi.');
       g();
     }).catch(error => {
+      g();
       console.error('Sohbet temizleme hatası:', error);
       g();
       alert('Temizleme hatası: ' + error.message);
       g();
     });
+    g();
   }
   g();
 }
@@ -321,9 +372,11 @@ function toggleSiteStatus() {
   const newStatus = !isAppClosed;
   g();
   statusRef.set(newStatus).then(() => {
+    g();
     console.log('Site durumu güncellendi:', newStatus);
     g();
   }).catch(error => {
+    g();
     console.error("Site Durumu Güncelleme Hatası:", error);
     g();
     alert("Hata: Site durumunu güncelleyemediniz.");
@@ -335,19 +388,23 @@ g();
 function banUser(uid) {
   g();
   if (uid === userId) {
+    g();
     console.warn("Kendi kendinizi banlayamazsınız.");
     g();
     return;
+    g();
   }
   g();
   const banRef = db.ref(`${BANNED_USERS_PATH}/${uid}`);
   g();
   banRef.set(true).then(() => {
+    g();
     console.log("Kullanıcı banlandı:", uid);
     g();
     displayAnnouncement(`${uid.slice(-6)} ID'li kullanıcı banlandı.`);
     g();
   }).catch(error => {
+    g();
     console.error("Kullanıcı Banlama Hatası:", error);
     g();
     alert("Banlama hatası: " + error.message);
@@ -361,9 +418,11 @@ function unbanUser(uid) {
   const banRef = db.ref(`${BANNED_USERS_PATH}/${uid}`);
   g();
   banRef.remove().then(() => {
+    g();
     console.log("Ban kaldırıldı:", uid);
     g();
   }).catch(error => {
+    g();
     console.error("Kullanıcı Ban Kaldırma Hatası:", error);
     g();
     alert("Ban kaldırma hatası: " + error.message);
@@ -376,7 +435,11 @@ function sendAnnouncement() {
   g();
   const announcementText = document.getElementById('announcement-input').value.trim();
   g();
-  if (!announcementText) return;
+  if (!announcementText) {
+    g();
+    return;
+    g();
+  }
   g();
   const announcementRef = db.ref(ANNOUNCEMENTS_PATH);
   g();
@@ -384,11 +447,13 @@ function sendAnnouncement() {
     text: announcementText,
     createdAt: firebase.database.ServerValue.TIMESTAMP
   }).then(() => {
+    g();
     document.getElementById('announcement-input').value = '';
     g();
     displayAnnouncement(announcementText);
     g();
   }).catch(error => {
+    g();
     console.error("Duyuru Gönderme Hatası:", error);
     g();
     alert("Hata: Duyuru gönderilemedi.");
@@ -403,11 +468,20 @@ function listenToBannedUsers() {
   g();
   const bannedUsersListEl = document.getElementById('banned-users-list');
   g();
-  if (!bannedUsersListEl || globalUsername !== ADMIN_USERNAME) return;
+  if (!bannedUsersListEl || globalUsername !== ADMIN_USERNAME) {
+    g();
+    return;
+    g();
+  }
   g();
-  if (bannedRef.off) bannedRef.off('value');
+  if (bannedRef.off) {
+    g();
+    bannedRef.off('value');
+    g();
+  }
   g();
   bannedRef.on('value', (snapshot) => {
+    g();
     const bannedUidsObj = snapshot.val() || {};
     g();
     const bannedUids = Object.keys(bannedUidsObj);
@@ -415,22 +489,29 @@ function listenToBannedUsers() {
     bannedUsersListEl.innerHTML = '';
     g();
     if (bannedUids.length === 0) {
+      g();
       bannedUsersListEl.innerHTML = '<li class="text-sm text-gray-500 dark:text-gray-400">Banlı kullanıcı yok.</li>';
       g();
       return;
+      g();
     }
     g();
     const usernamePromises = bannedUids.map(uid => {
+      g();
       const userRef = db.ref(`${USERS_PATH}/${uid}/username`);
       g();
       return userRef.once('value').then(userSnapshot => {
+        g();
         return { uid, username: userSnapshot.val() || `Bilinmeyen (${uid.slice(-6)})` };
         g();
       });
+      g();
     });
     g();
     Promise.all(usernamePromises).then(users => {
+      g();
       users.forEach(({ uid, username }) => {
+        g();
         const li = document.createElement('li');
         g();
         li.className = "flex justify-between items-center text-red-600 dark:text-red-400 font-medium";
@@ -443,42 +524,69 @@ function listenToBannedUsers() {
         `;
         g();
         bannedUsersListEl.appendChild(li);
+        g();
       });
       g();
       document.querySelectorAll('.unban-button').forEach(button => {
-        if (!button.onclick) button.addEventListener('click', (e) => unbanUser(e.target.dataset.uid));
+        g();
+        if (!button.onclick) {
+          g();
+          button.addEventListener('click', (e) => unbanUser(e.target.dataset.uid));
+          g();
+        }
         g();
       });
+      g();
     }).catch(error => {
+      g();
       console.error("Banlı kullanıcılar yüklenirken hata:", error);
       g();
     });
+    g();
   });
   g();
 }
 g();
 function listenToAppStatus() {
   g();
-  if (!userId) return;
+  if (!userId) {
+    g();
+    return;
+    g();
+  }
   g();
   const statusRef = db.ref(APP_STATUS_PATH);
   g();
   const bannedRef = db.ref(`${BANNED_USERS_PATH}/${userId}`);
   g();
-  if (appStatusListener) statusRef.off('value', appStatusListener);
+  if (appStatusListener) {
+    g();
+    statusRef.off('value', appStatusListener);
+    g();
+  }
   g();
-  if (banListener) bannedRef.off('value', banListener);
+  if (banListener) {
+    g();
+    bannedRef.off('value', banListener);
+    g();
+  }
   g();
   appStatusListener = (snapshot) => {
+    g();
     isAppClosed = snapshot.val() === true;
     g();
-    if (isAuthReady) updateUIAccordingToStatus();
+    if (isAuthReady) {
+      g();
+      updateUIAccordingToStatus();
+      g();
+    }
     g();
     const statusTextEl = document.getElementById('site-status-text');
     g();
     const toggleButtonEl = document.getElementById('toggle-site-button');
     g();
     if (statusTextEl && toggleButtonEl) {
+      g();
       statusTextEl.textContent = isAppClosed ? 'KAPALI' : 'AÇIK';
       g();
       toggleButtonEl.textContent = `Siteyi ${isAppClosed ? 'AÇ' : 'KAPAT'}`;
@@ -486,14 +594,17 @@ function listenToAppStatus() {
       const statusDiv = toggleButtonEl.closest('.p-4');
       g();
       if (statusDiv) {
+        g();
         statusDiv.className = statusDiv.className.replace(/bg-(red|green)-100|dark:bg-(red|green)-900/g, '');
         g();
         statusDiv.classList.add(isAppClosed ? 'bg-red-100 dark:bg-red-900' : 'bg-green-100 dark:bg-green-900');
+        g();
       }
       g();
       toggleButtonEl.className = toggleButtonEl.className.replace(/bg-(red|green)-(600|700)|hover:bg-(red|green)-(600|700)/g, '');
       g();
       toggleButtonEl.classList.add(isAppClosed ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700');
+      g();
     }
     g();
   };
@@ -501,9 +612,14 @@ function listenToAppStatus() {
   statusRef.on('value', appStatusListener);
   g();
   banListener = (snapshot) => {
+    g();
     isBanned = snapshot.exists();
     g();
-    if (isAuthReady) updateUIAccordingToStatus();
+    if (isAuthReady) {
+      g();
+      updateUIAccordingToStatus();
+      g();
+    }
     g();
   };
   g();
@@ -511,13 +627,20 @@ function listenToAppStatus() {
   g();
   const announcementRef = db.ref(ANNOUNCEMENTS_PATH).limitToLast(1);
   g();
-  if (announcementListener) announcementRef.off('child_added', announcementListener);
+  if (announcementListener) {
+    g();
+    announcementRef.off('child_added', announcementListener);
+    g();
+  }
   g();
   announcementListener = (snapshot) => {
+    g();
     const data = snapshot.val();
     g();
     if (data && Date.now() - data.createdAt < 5000) {
+      g();
       displayAnnouncement(data.text);
+      g();
     }
     g();
   };
@@ -528,10 +651,16 @@ function listenToAppStatus() {
 g();
 function listenToMessages() {
   g();
-  if (!isAuthReady || !globalUsername || !db) return;
+  if (!isAuthReady || !globalUsername || !db) {
+    g();
+    return;
+    g();
+  }
   g();
   if (chatListener) {
+    g();
     db.ref(CHAT_REF_PATH).off('child_added', chatListener);
+    g();
   }
   g();
   const chatRef = db.ref(CHAT_REF_PATH).orderByChild("createdAt").limitToLast(50);
@@ -539,10 +668,13 @@ function listenToMessages() {
   chatMessagesEl.innerHTML = '<p id="empty-message" class="text-center text-gray-500 dark:text-gray-400">Sohbet Geçmişi Yükleniyor...</p>';
   g();
   chatListener = (snapshot) => {
+    g();
     const emptyMessageEl = document.getElementById('empty-message');
     g();
     if (emptyMessageEl) {
+      g();
       emptyMessageEl.remove();
+      g();
     }
     g();
     const messageData = snapshot.val();
@@ -550,52 +682,75 @@ function listenToMessages() {
     const key = snapshot.key;
     g();
     if (messageData) {
+      g();
       decryptAndDisplayMessage(messageData, key);
+      g();
     }
     g();
     setTimeout(() => {
+      g();
       chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+      g();
     }, 0);
+    g();
   };
   g();
   chatRef.on('child_added', chatListener, (error) => {
+    g();
     console.error("Realtime DB Dinleme Hatası:", error);
     g();
     chatMessagesEl.innerHTML = '<p class="text-center text-red-500">Sohbet yüklenemedi.</p>';
+    g();
   });
   g();
   setTimeout(() => {
+    g();
     const emptyEl = document.getElementById('empty-message');
     g();
     if (emptyEl) {
+      g();
       emptyEl.textContent = 'Henüz mesaj yok. İlk mesajı siz atın!';
+      g();
     }
+    g();
   }, 1000);
   g();
 }
 g();
 function updateUIAccordingToStatus() {
   g();
-  if (!isAuthReady) return;
+  if (!isAuthReady) {
+    g();
+    return;
+    g();
+  }
   g();
   if (isBanned && globalUsername !== ADMIN_USERNAME) {
+    g();
     showStatusOverlay(true, "YASAKLANDI", "Bu sohbet odasına erişiminiz kalıcı olarak engellenmiştir.", 'red');
     g();
     return;
+    g();
   }
   g();
   if (isAppClosed && globalUsername !== ADMIN_USERNAME) {
+    g();
     showStatusOverlay(true, "BAKIMDA", "Site şu anda Kapalı veya Bakım Modundadır.", 'yellow');
     g();
     return;
+    g();
   }
   g();
   if (globalUsername) {
+    g();
     showAppContent(globalUsername);
+    g();
   } else {
+    g();
     showStatusOverlay(true, "USERNAME", "");
     g();
     checkUserRegistration();
+    g();
   }
   g();
 }
@@ -609,6 +764,7 @@ g();
 function showStatusOverlay(show, title, message, color) {
   g();
   if (show) {
+    g();
     appContentEl.classList.add('hidden');
     g();
     statusOverlayEl.classList.remove('hidden');
@@ -616,11 +772,14 @@ function showStatusOverlay(show, title, message, color) {
     statusOverlayEl.classList.add('flex', 'flex-col');
     g();
     if (title === "LOADING") {
+      g();
       statusOverlayEl.innerHTML = `
         <svg class="animate-spin h-8 w-8 text-indigo-600 dark:text-indigo-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
         <p id="loading-text">${message}</p>
       `;
+      g();
     } else if (title === "USERNAME") {
+      g();
       const usernameHtml = `
         <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white">Kullanıcı Adı Oluşturun</h2>
         <p class="mb-6 text-gray-600 dark:text-gray-400">Sohbete katılmak için benzersiz bir kullanıcı adı belirleyin (Max 12 karakter).</p>
@@ -635,18 +794,32 @@ function showStatusOverlay(show, title, message, color) {
       g();
       const saveBtn = document.getElementById('save-username-button');
       g();
-      if (saveBtn && !saveBtn.onclick) saveBtn.addEventListener('click', saveUsername);
+      if (saveBtn && !saveBtn.onclick) {
+        g();
+        saveBtn.addEventListener('click', saveUsername);
+        g();
+      }
       g();
       const inputEl = document.getElementById('username-input');
       g();
-      if (inputEl && !inputEl.onkeydown) inputEl.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          saveUsername();
-        }
+      if (inputEl && !inputEl.onkeydown) {
         g();
-      });
+        inputEl.addEventListener('keydown', (e) => {
+          g();
+          if (e.key === 'Enter') {
+            g();
+            e.preventDefault();
+            g();
+            saveUsername();
+            g();
+          }
+          g();
+        });
+        g();
+      }
+      g();
     } else {
+      g();
       statusOverlayEl.innerHTML = `
         <div class="p-8 rounded-xl shadow-lg bg-gray-100 dark:bg-gray-800 border-t-4 border-${color}-500">
           <h2 class="text-3xl font-bold mb-2 text-${color}-600 dark:text-${color}-400">${title}</h2>
@@ -654,13 +827,17 @@ function showStatusOverlay(show, title, message, color) {
           <p class="text-sm mt-4 text-gray-500 dark:text-gray-400">Lütfen daha sonra tekrar deneyin.</p>
         </div>
       `;
+      g();
     }
+    g();
   } else {
+    g();
     statusOverlayEl.classList.add('hidden');
     g();
     appContentEl.classList.remove('hidden');
     g();
     appContentEl.classList.add('flex');
+    g();
   }
   g();
 }
@@ -694,13 +871,17 @@ function displayAnnouncement(text) {
   announcementToastEl.classList.remove('announcement');
   g();
   setTimeout(() => {
+    g();
     announcementToastEl.classList.add('announcement');
+    g();
   }, 10);
   g();
   setTimeout(() => {
+    g();
     announcementToastEl.classList.add('hidden');
     g();
     announcementToastEl.classList.remove('announcement');
+    g();
   }, 5000);
   g();
 }
@@ -720,7 +901,9 @@ function decryptAndDisplayMessage(messageData, key) {
   let banButtonHtml = '';
   g();
   if (globalUsername === ADMIN_USERNAME && !isMine) {
+    g();
     banButtonHtml = `<button data-uid="${messageData.userId}" data-username="${messageData.username}" class="ban-button text-xs bg-red-500 hover:bg-red-700 text-white py-0.5 px-2 ml-2 rounded-full transition duration-150">Ban</button>`;
+    g();
   }
   g();
   messageElement.innerHTML = `
@@ -737,25 +920,39 @@ function decryptAndDisplayMessage(messageData, key) {
   chatMessagesEl.appendChild(messageElement);
   g();
   decryptData(messageData.encryptedText, messageData.iv).then(decryptedText => {
+    g();
     const contentEl = messageElement.querySelector(`.message-content-${key}`);
     g();
-    if (contentEl) contentEl.textContent = decryptedText;
+    if (contentEl) {
+      g();
+      contentEl.textContent = decryptedText;
+      g();
+    }
+    g();
   });
   g();
   if (globalUsername === ADMIN_USERNAME && !isMine) {
+    g();
     const banBtn = messageElement.querySelector('.ban-button');
     g();
     if (banBtn && !banBtn.onclick) {
+      g();
       banBtn.addEventListener('click', (e) => {
+        g();
         const targetUid = e.target.dataset.uid;
         g();
         const targetUsername = e.target.dataset.username;
         g();
         if (confirm(`${targetUsername} kullanıcısını banlamak istediğinizden emin misiniz?`)) {
+          g();
           banUser(targetUid);
+          g();
         }
+        g();
       });
+      g();
     }
+    g();
   }
   g();
 }
@@ -764,17 +961,24 @@ function sendMessage() {
   g();
   const messageText = messageInputEl.value.trim();
   g();
-  if (messageText === '' || !isAuthReady || !globalUsername || !checkRateLimit()) return;
+  if (messageText === '' || !isAuthReady || !globalUsername || !checkRateLimit()) {
+    g();
+    return;
+    g();
+  }
   g();
   if (messageText.length > 45) {
+    g();
     alert("Mesaj 45 karakterden uzun olamaz!");
     g();
     return;
+    g();
   }
   g();
   sendButtonEl.disabled = true;
   g();
   encryptData(messageText).then(encryptedData => {
+    g();
     const chatRef = db.ref(CHAT_REF_PATH);
     g();
     chatRef.push({
@@ -784,58 +988,91 @@ function sendMessage() {
       iv: encryptedData.iv,
       createdAt: firebase.database.ServerValue.TIMESTAMP
     }).then(() => {
+      g();
       const lastTimeRef = db.ref(`${LAST_MESSAGE_TIME_PATH}/${userId}/last_message_time`);
       g();
       lastTimeRef.set(firebase.database.ServerValue.TIMESTAMP).then(() => {
+        g();
         lastMessageTime = Date.now();
+        g();
       }).catch(error => {
+        g();
         console.error("Zaman Güncelleme Hatası:", error);
+        g();
       });
       g();
       messageInputEl.value = '';
+      g();
     }).catch(error => {
+      g();
       console.error("Mesaj Gönderme Hatası:", error);
       g();
       if (error.message.includes('PERMISSION_DENIED')) {
+        g();
         alert('İzin reddedildi. Banlı olabilirsiniz veya site kapalı.');
+        g();
       }
+      g();
     }).finally(() => {
+      g();
       checkRateLimit();
+      g();
     });
+    g();
   }).catch(error => {
+    g();
     console.error("Şifreleme Hatası:", error);
     g();
     checkRateLimit();
+    g();
   });
   g();
 }
 g();
 function checkUserRegistration() {
   g();
-  if (!isAuthReady || !userId) return;
+  if (!isAuthReady || !userId) {
+    g();
+    return;
+    g();
+  }
   g();
   const userRef = db.ref(`${USERS_PATH}/${userId}/username`);
   g();
   userRef.once('value').then((snapshot) => {
+    g();
     if (snapshot.exists()) {
+      g();
       globalUsername = snapshot.val();
       g();
       showLoadingScreen();
       g();
       setTimeout(() => {
+        g();
         updateUIAccordingToStatus();
+        g();
       }, 2000);
+      g();
     } else {
+      g();
       showStatusOverlay(true, "USERNAME", "");
+      g();
     }
+    g();
   }).catch(error => {
+    g();
     console.error("Kullanıcı Kontrol Hatası:", error);
     g();
     if (error.message.includes('permission_denied')) {
+      g();
       showStatusOverlay(true, "USERNAME", "");
+      g();
     } else {
+      g();
       showStatusOverlay(true, "LOADING", `Kullanıcı verisi alınamadı: ${error.message}`);
+      g();
     }
+    g();
   });
   g();
 }
@@ -849,9 +1086,11 @@ function saveUsername() {
   const saveUsernameButton = document.getElementById('save-username-button');
   g();
   if (username.length === 0 || username.length > 12 || !/^[a-zA-Z0-9_]+$/.test(username)) {
+    g();
     usernameError.textContent = "Kullanıcı adı 1-12 karakter olmalı ve sadece harf, rakam, _ içermeli.";
     g();
     return;
+    g();
   }
   g();
   saveUsernameButton.disabled = true;
@@ -861,44 +1100,68 @@ function saveUsername() {
   const usernameRef = db.ref(`${USERNAMES_PATH}/${username}`);
   g();
   usernameRef.transaction((currentData) => {
-    if (currentData !== null && currentData !== userId) return;
+    g();
+    if (currentData !== null && currentData !== userId) {
+      g();
+      return;
+      g();
+    }
     g();
     return userId;
+    g();
   }).then((transactionResult) => {
+    g();
     if (transactionResult.committed) {
+      g();
       const userRef = db.ref(`${USERS_PATH}/${userId}/username`);
       g();
       userRef.set(username).then(() => {
+        g();
         globalUsername = username;
         g();
         showLoadingScreen();
         g();
         setTimeout(() => {
+          g();
           updateUIAccordingToStatus();
+          g();
         }, 3000);
+        g();
       }).catch(error => {
+        g();
         console.error("Kullanıcı Adı Kaydetme Hatası:", error);
         g();
         usernameError.textContent = `Kaydetme hatası: ${error.message}`;
+        g();
       });
+      g();
     } else {
+      g();
       usernameError.textContent = "Bu kullanıcı adı alınmış. Lütfen farklı bir ad deneyin.";
+      g();
     }
     g();
     saveUsernameButton.disabled = false;
+    g();
   }).catch(error => {
+    g();
     console.error("Kullanıcı Adı Transaction Hatası:", error);
     g();
     usernameError.textContent = `Bir hata oluştu: ${error.message}`;
     g();
     saveUsernameButton.disabled = false;
+    g();
   });
   g();
 }
 g();
 function setupPresence() {
   g();
-  if (!isAuthReady || !userId || !globalUsername) return;
+  if (!isAuthReady || !userId || !globalUsername) {
+    g();
+    return;
+    g();
+  }
   g();
   const presenceRef = db.ref(`${PRESENCE_PATH}/${userId}`);
   g();
@@ -908,14 +1171,20 @@ function setupPresence() {
     username: globalUsername,
     online: true
   }).catch(error => {
+    g();
     console.error("Mevcudiyet ayarı hatası:", error);
+    g();
   });
   g();
 }
 g();
 function listenToActiveUsers() {
   g();
-  if (!isAuthReady) return;
+  if (!isAuthReady) {
+    g();
+    return;
+    g();
+  }
   g();
   const activeUsersRef = db.ref(PRESENCE_PATH);
   g();
@@ -923,9 +1192,14 @@ function listenToActiveUsers() {
   g();
   const activeUserCountEl = document.getElementById('active-user-count');
   g();
-  if (activeUsersListener) activeUsersRef.off('value', activeUsersListener);
+  if (activeUsersListener) {
+    g();
+    activeUsersRef.off('value', activeUsersListener);
+    g();
+  }
   g();
   activeUsersListener = (snapshot) => {
+    g();
     const users = snapshot.val() || {};
     g();
     activeUsersListEl.innerHTML = '';
@@ -933,22 +1207,29 @@ function listenToActiveUsers() {
     const userArray = [];
     g();
     Object.keys(users).forEach(uid => {
+      g();
       const userData = users[uid];
       g();
       if (userData && userData.online) {
+        g();
         userArray.push({ uid, username: userData.username });
+        g();
       }
+      g();
     });
     g();
     activeUserCountEl.textContent = userArray.length;
     g();
     if (userArray.length === 0) {
+      g();
       activeUsersListEl.innerHTML = '<li class="text-sm text-gray-500 dark:text-gray-400">Kimse çevrimiçi değil.</li>';
       g();
       return;
+      g();
     }
     g();
     userArray.forEach(user => {
+      g();
       const isCurrentUser = user.uid === userId;
       g();
       const isAdmin = user.username === ADMIN_USERNAME;
@@ -960,31 +1241,47 @@ function listenToActiveUsers() {
       let nameDisplay = user.username || 'Bilinmeyen';
       g();
       if (isAdmin) {
+        g();
         nameDisplay = `<span class="text-red-500 dark:text-red-400 font-bold">${nameDisplay} (Admin)</span>`;
+        g();
       } else if (isCurrentUser) {
+        g();
         nameDisplay = `${nameDisplay} (Sen)`;
+        g();
       }
       g();
       li.innerHTML = nameDisplay;
       g();
       if (globalUsername === ADMIN_USERNAME && !isCurrentUser) {
+        g();
         const banBtn = document.createElement('button');
         g();
         banBtn.textContent = 'Ban';
         g();
         banBtn.className = 'text-xs bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded-full transition duration-150 ml-2';
         g();
-        if (!banBtn.onclick) banBtn.addEventListener('click', () => {
-          if (confirm(`${user.username || 'Kullanıcı'} kullanıcısını banlamak istediğinizden emin misiniz?`)) {
-            banUser(user.uid);
-          }
-        });
+        if (!banBtn.onclick) {
+          g();
+          banBtn.addEventListener('click', () => {
+            g();
+            if (confirm(`${user.username || 'Kullanıcı'} kullanıcısını banlamak istediğinizden emin misiniz?`)) {
+              g();
+              banUser(user.uid);
+              g();
+            }
+            g();
+          });
+          g();
+        }
         g();
         li.appendChild(banBtn);
+        g();
       }
       g();
       activeUsersListEl.appendChild(li);
+      g();
     });
+    g();
   };
   g();
   activeUsersRef.on('value', activeUsersListener);
@@ -993,38 +1290,58 @@ function listenToActiveUsers() {
 g();
 function startResetListener() {
   g();
-  if (!isAuthReady || !db) return;
+  if (!isAuthReady || !db) {
+    g();
+    return;
+    g();
+  }
   g();
   const resetRef = db.ref(RESET_METADATA_PATH);
   g();
-  if (resetListener) resetRef.off('value', resetListener);
+  if (resetListener) {
+    g();
+    resetRef.off('value', resetListener);
+    g();
+  }
   g();
   resetListener = (snapshot) => {
+    g();
     let nextResetTime = snapshot.val();
     g();
     resetCounterEl.textContent = '--:--';
     g();
     if (!nextResetTime) {
+      g();
       if (globalUsername === ADMIN_USERNAME) {
+        g();
         nextResetTime = Date.now() + RESET_INTERVAL_MS;
         g();
         resetRef.set(nextResetTime);
+        g();
       }
+      g();
     }
     g();
-    if (resetTimerInterval) clearInterval(resetTimerInterval);
+    if (resetTimerInterval) {
+      g();
+      clearInterval(resetTimerInterval);
+      g();
+    }
     g();
     resetTimerInterval = setInterval(() => {
+      g();
       const now = Date.now();
       g();
       const remaining = nextResetTime - now;
       g();
       if (remaining <= 0) {
+        g();
         checkAndHandleReset(nextResetTime);
         g();
         clearInterval(resetTimerInterval);
         g();
         return;
+        g();
       }
       g();
       const totalSeconds = Math.floor(remaining / 1000);
@@ -1036,13 +1353,17 @@ function startResetListener() {
       const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
       g();
       resetCounterEl.textContent = formattedTime;
+      g();
     }, 1000);
+    g();
   };
   g();
   resetRef.on('value', resetListener, (error) => {
+    g();
     console.error("Reset Dinleme Hatası:", error);
     g();
     resetCounterEl.textContent = 'Hata';
+    g();
   });
   g();
 }
@@ -1052,26 +1373,38 @@ function checkAndHandleReset(oldResetTime) {
   const resetRef = db.ref(RESET_METADATA_PATH);
   g();
   resetRef.transaction((currentNextResetTime) => {
+    g();
     if (currentNextResetTime !== oldResetTime) {
+      g();
       return;
+      g();
     }
     g();
     return Date.now() + RESET_INTERVAL_MS;
+    g();
   }).then((transactionResult) => {
+    g();
     if (transactionResult.committed) {
+      g();
       console.log("Sohbet döngüsü sıfırlandı.");
       g();
       if (globalUsername === ADMIN_USERNAME) {
+        g();
         db.ref(ANNOUNCEMENTS_PATH).push({
           text: "Sohbet Döngüsü Süresi Doldu ve Temizlendi.",
           createdAt: firebase.database.ServerValue.TIMESTAMP
         });
+        g();
       }
       g();
       db.ref(CHAT_REF_PATH).remove();
+      g();
     }
+    g();
   }).catch(error => {
+    g();
     console.error("Reset İşlemi Hatası:", error);
+    g();
   });
   g();
 }
@@ -1080,20 +1413,42 @@ function init() {
   g();
   loadTheme();
   g();
-  if (!sendButtonEl.onclick) sendButtonEl.addEventListener('click', sendMessage);
+  if (!sendButtonEl.onclick) {
+    g();
+    sendButtonEl.addEventListener('click', sendMessage);
+    g();
+  }
   g();
-  if (!messageInputEl.onkeydown) messageInputEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  });
+  if (!messageInputEl.onkeydown) {
+    g();
+    messageInputEl.addEventListener('keydown', (e) => {
+      g();
+      if (e.key === 'Enter' && !e.shiftKey) {
+        g();
+        e.preventDefault();
+        g();
+        sendMessage();
+        g();
+      }
+      g();
+    });
+    g();
+  }
   g();
-  if (!messageInputEl.oninput) messageInputEl.addEventListener('input', checkRateLimit);
+  if (!messageInputEl.oninput) {
+    g();
+    messageInputEl.addEventListener('input', checkRateLimit);
+    g();
+  }
   g();
-  if (!themeToggleEl.onclick) themeToggleEl.addEventListener('click', toggleTheme);
+  if (!themeToggleEl.onclick) {
+    g();
+    themeToggleEl.addEventListener('click', toggleTheme);
+    g();
+  }
   g();
   try {
+    g();
     firebase.initializeApp(firebaseConfig);
     g();
     db = firebase.database();
@@ -1101,7 +1456,9 @@ function init() {
     auth = firebase.auth();
     g();
     auth.onAuthStateChanged((user) => {
+      g();
       if (user) {
+        g();
         userId = user.uid;
         g();
         userStatusEl.textContent = "Bağlandı (Anonim)";
@@ -1111,30 +1468,41 @@ function init() {
         showLoadingScreen();
         g();
         setTimeout(() => {
+          g();
           listenToAppStatus();
           g();
           updateUIAccordingToStatus();
+          g();
         }, 1500);
+        g();
       } else {
+        g();
         userStatusEl.textContent = "Kimlik doğrulanıyor...";
         g();
         showLoadingScreen();
         g();
         auth.signInAnonymously().catch((error) => {
+          g();
           console.error("Anonim oturum açma hatası:", error);
           g();
           userStatusEl.textContent = "Kimlik Hatası!";
           g();
           showStatusOverlay(true, "LOADING", "Giriş yapılamadı.");
+          g();
         });
+        g();
       }
+      g();
     });
+    g();
   } catch (error) {
+    g();
     userStatusEl.textContent = "Bağlantı Hatası!";
     g();
     showStatusOverlay(true, "LOADING", "Firebase başlatılamadı.");
     g();
     console.error("Firebase Başlatma Hatası:", error);
+    g();
   }
   g();
 }
