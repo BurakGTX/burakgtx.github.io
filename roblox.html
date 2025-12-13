@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Roblox Profil Paneli</title>
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #1e1e2f, #2b2b45);
+        color: white;
+    }
+    .container {
+        max-width: 1000px;
+        margin: auto;
+        padding: 30px;
+    }
+    .card {
+        background: rgba(255,255,255,0.08);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 25px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    h1, h2 {
+        margin-top: 0;
+    }
+    .profile {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    .profile img {
+        width: 120px;
+        height: 120px;
+        border-radius: 12px;
+    }
+    .stats {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    .stat {
+        background: rgba(0,0,0,0.3);
+        padding: 15px;
+        border-radius: 12px;
+        min-width: 150px;
+        text-align: center;
+    }
+    .passes {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    .pass {
+        background: rgba(0,0,0,0.35);
+        border-radius: 12px;
+        padding: 15px;
+    }
+    .pass h4 {
+        margin: 0 0 10px;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>🎮 Roblox Profil Paneli</h1>
+    <div class="card profile" id="profileCard">
+        <img id="avatar" src="">
+        <div>
+            <h2 id="username">Yükleniyor...</h2>
+            <p id="description"></p>
+        </div>
+    </div>
+    <div class="card">
+        <h2>📊 Bilgiler</h2>
+        <div class="stats">
+            <div class="stat">
+                <h3>Robux</h3>
+                <p id="robux">...</p>
+            </div>
+            <div class="stat">
+                <h3>Arkadaşlar</h3>
+                <p id="friendsCount">...</p>
+            </div>
+            <div class="stat">
+                <h3>Game Pass</h3>
+                <p id="passCount">...</p>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <h2>🎟️ Game Pass'lerim</h2>
+        <div class="passes" id="passes"></div>
+    </div>
+</div>
+
+<script>
+const USER_ID = 3380915154;
+
+async function loadProfile() {
+    const userRes = await fetch(`https://users.roblox.com/v1/users/${USER_ID}`);
+    const user = await userRes.json();
+    document.getElementById("username").innerText = user.displayName || user.name;
+    document.getElementById("description").innerText = user.description || "Açıklama yok";
+
+    const avatarRes = await fetch(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${USER_ID}&size=420x420&format=Png`);
+    const avatar = await avatarRes.json();
+    document.getElementById("avatar").src = avatar.data[0].imageUrl;
+}
+
+async function loadRobux() {
+    const res = await fetch(`https://economy.roblox.com/v1/users/${USER_ID}/currency`);
+    const data = await res.json();
+    document.getElementById("robux").innerText = data.robux.toLocaleString();
+}
+
+async function loadFriendsCount() {
+    try {
+        const res = await fetch(`https://friends.roblox.com/v1/users/${USER_ID}/friends/count`);
+        const data = await res.json();
+        document.getElementById("friendsCount").innerText = data.count.toLocaleString();
+    } catch (e) {
+        document.getElementById("friendsCount").innerText = "Hata";
+    }
+}
+
+async function loadPasses() {
+    let cursor = "";
+    let allPasses = [];
+    do {
+        const res = await fetch(`https://inventory.roblox.com/v1/users/${USER_ID}/items/GamePass/34?limit=50&cursor=${cursor}`);
+        const data = await res.json();
+        allPasses = allPasses.concat(data.data);
+        cursor = data.nextPageCursor;
+    } while (cursor);
+
+    document.getElementById("passCount").innerText = allPasses.length;
+
+    const container = document.getElementById("passes");
+    for (const pass of allPasses) {
+        const detailRes = await fetch(`https://economy.roblox.com/v1/assets/${pass.assetId}/details`);
+        const detail = await detailRes.json();
+        const div = document.createElement("div");
+        div.className = "pass";
+        div.innerHTML = `
+            <h4>${detail.name}</h4>
+            <p>💰 Fiyat: ${detail.priceInRobux !== undefined ? detail.priceInRobux + " Robux" : "Satılık değil"}</p>
+            <p>👤 Satıcı: ${detail.creator?.name || "Bilinmiyor"}</p>
+        `;
+        container.appendChild(div);
+    }
+}
+
+// Tüm verileri yükle
+(async () => {
+    await loadProfile();
+    await loadRobux();
+    await loadFriendsCount();  // Yeni eklenen kısım
+    await loadPasses();
+})();
+</script>
+</body>
+</html>
