@@ -1,52 +1,31 @@
 export default async function handler(req, res) {
-  const USER_ID = 3380915154;
+    const { usd } = req.query;
 
-  try {
-    // PROFİL
-    const userRes = await fetch(
-      `https://users.roblox.com/v1/users/${USER_ID}`
-    );
-    const user = await userRes.json();
+    if (!usd || isNaN(usd)) {
+        return res.status(400).json({
+            error: "Geçerli bir USD miktarı gir"
+        });
+    }
 
-    // ROBUX
-    const robuxRes = await fetch(
-      `https://economy.roblox.com/v1/users/${USER_ID}/currency`
-    );
-    const robux = await robuxRes.json();
+    try {
+        const response = await fetch(
+            "https://free.ratesdb.com/v1/rates?from=USD&to=TRY"
+        );
+        const data = await response.json();
 
-    // GAME PASS
-    let passes = [];
-    let cursor = "";
+        const rate = data.data.rates.TRY;
+        const result = usd * rate;
 
-    do {
-      const invRes = await fetch(
-        `https://inventory.roblox.com/v1/users/${USER_ID}/items/GamePass/34?limit=50&cursor=${cursor}`
-      );
-      const inv = await invRes.json();
+        res.status(200).json({
+            usd: Number(usd),
+            try: Number(result.toFixed(2)),
+            rate: rate,
+            date: data.data.date
+        });
 
-      if (inv.data) passes.push(...inv.data);
-      cursor = inv.nextPageCursor;
-    } while (cursor);
-
-    // CORS AÇ
-    res.setHeader("Access-Control-Allow-Origin", "*");
-
-    // JSON RESPONSE
-    res.status(200).json({
-      user: {
-        id: user.id,
-        name: user.name,
-        description: user.description,
-        created: user.created
-      },
-      robux: robux.robux ?? 0,
-      gamePassCount: passes.length,
-      gamePasses: passes
-    });
-
-  } catch (err) {
-    res.status(500).json({
-      error: "Roblox API erişim hatası"
-    });
-  }
+    } catch (err) {
+        res.status(500).json({
+            error: "Kur bilgisi alınamadı"
+        });
+    }
 }
