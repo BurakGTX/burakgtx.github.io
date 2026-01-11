@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<title>BurakGTX MC Server | Güvenli Erişim</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; 
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://burakgtx.neocities.org https://cdn.jsdelivr.net; 
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
+    img-src 'self' data: https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com https://api.dicebear.com; 
+    connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.firebaseapp.com;
+    font-src 'self' https://fonts.gstatic.com;">
+
+<script type="text/javascript" src="https://burakgtx.neocities.org/minecraft.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/eag-web-sp@1.0.4/assets_uri.js"></script>
+
+<style type="text/css">
+/* Tasarım Değişkenleri */
+:root { 
+    --primary: #5865F2; 
+    --bg: #36393F; 
+    --card: #2F3136; 
+    --success: #4ade80; 
+    --error: #f43f5e;
+    --text-muted: #b9bbbe;
+}
+
+/* Global Ayarlar */
+body {
+	margin: 0; width: 100vw; height: 100vh;
+	background: var(--bg); color: white;
+	font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+	text-align: center; display: flex;
+	justify-content: center; align-items: center;
+    overflow: hidden; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+}
+
+/* Doğrulama Ekranı (Blur Efektli) */
+#authCheckScreen {
+	position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+	display: flex; justify-content: center; align-items: center;
+	backdrop-filter: blur(15px); background-color: rgba(0, 0, 0, 0.85);
+    z-index: 5000;
+}
+
+/* Panel Kutusu */
+#authBox {
+	background: var(--card); padding: 45px; border-radius: 25px;
+	box-shadow: 0 25px 70px rgba(0, 0, 0, 0.7); width: 420px;
+	text-align: center; border: 1px solid #40444B;
+    animation: fadeInScale 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes fadeInScale {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Profil Avatarı */
+#userAvatar {
+    width: 110px; height: 110px; border-radius: 50%;
+    border: 4px solid var(--primary); margin: 0 auto 20px;
+    background: #0b1120; object-fit: cover;
+    display: none; box-shadow: 0 0 20px rgba(88, 101, 242, 0.4);
+}
+
+#authBox img.logo {
+	width: 180px; margin-bottom: 25px;
+    filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3));
+}
+
+.status-icon { font-size: 60px; margin-bottom: 15px; }
+
+/* Kullanıcı Adı Stili */
+#displayUsername {
+    font-size: 24px; font-weight: 800;
+    color: var(--primary); margin: 10px 0 20px;
+    display: none; letter-spacing: 1px;
+}
+
+/* Devam Et Butonu */
+.btn-start {
+    background: var(--primary); color: white; border: none;
+    padding: 18px 35px; border-radius: 12px;
+    font-weight: 800; font-size: 18px; cursor: pointer;
+    width: 100%; display: none; transition: 0.3s;
+    box-shadow: 0 4px 15px rgba(88, 101, 242, 0.3);
+}
+
+.btn-start:hover { 
+    background: #4752C4; transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(88, 101, 242, 0.5);
+}
+
+/* Yükleme Ekranı */
+#loadingScreen {
+	position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+	background: #000; display: none;
+	justify-content: center; align-items: center;
+	flex-direction: column; z-index: 9999;
+}
+
+#loadingTitle {
+	font-size: 50px; font-weight: 900; margin-bottom: 10px;
+    color: var(--primary); letter-spacing: 8px;
+}
+
+#loadingText {
+	font-size: 20px; animation: blink 1.5s infinite;
+    color: var(--text-muted);
+}
+
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+/* Sağ Üst Köşe Yazısı */
+#burakGTX {
+	position: fixed; top: 25px; right: 30px; font-size: 32px;
+	font-weight: 900; color: #ff80ab;
+    text-shadow: 0 0 15px rgba(255, 128, 171, 0.6);
+    z-index: 1000; pointer-events: none;
+}
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body id="game_frame" oncontextmenu="return false;">
+
+<div id="burakGTX">BurakGTX</div>
+
+<div id="authCheckScreen">
+    <div id="authBox">
+        <img src="https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/359fe050-3abb-4764-b470-33c7883ce044/de1ctyr-b47fce8d-a1d4-4272-9ace-ffcc77322c11.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiJcL2ZcLzM1OWZlMDUwLTNhYmItNDc2NC1iNDcwLTMzYzc4ODNjZTA0NFwvZGUxY3R5ci1iNDdmY2U4ZC1hMWQ0LTQyNzItOWFjZS1mZmNjNzczMjJjMTEucG5nIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmZpbGUuZG93bmxvYWQiXX0.xelsGqcViiAJDTSUFId-sCjJERvFPvr5JnZH_riNJ-I" class="logo" id="mainLogo" alt="Minecraft">
+        
+        <img id="userAvatar" src="" alt="Avatar">
+        
+        <div id="authStatusIcon" class="status-icon">🔄</div>
+        
+        <h2 id="authStatusText" style="margin: 0; font-size: 24px;">Oturumunuz kontrol ediliyor</h2>
+        <p id="authSubText" style="font-size: 15px; color: var(--text-muted); margin-top: 10px;">Yetkiler sorgulanıyor, lütfen bekleyin...</p>
+        
+        <div id="displayUsername"></div>
+        
+        <button id="btnContinue" class="btn-start" onclick="handleStart()">Devam Et</button>
+    </div>
+</div>
+
+<div id="loadingScreen">
+    <div id="loadingTitle">BurakGTX</div>
+    <div id="loadingText">Dünya Yükleniyor...</div>
+</div>
+
+<script type="module">
+    // --- GÜVENLİK SİSTEMİ (Anti-F12 & Anti-Console) ---
+    (function() {
+        // Sonsuz Debugger Döngüsü
+        setInterval(function() {
+            (function(a) {return (function(a) {return (Function('debugger')())}(a))}(110));
+        }, 100);
+
+        // Klavye Kısayolları Engelleme
+        window.addEventListener('keydown', function(e) {
+            // F12 engelle
+            if (e.keyCode === 123) { terminateSession(); }
+            // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U engelle
+            if (e.ctrlKey && (e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || (e.ctrlKey && e.keyCode === 85)) {
+                terminateSession();
+            }
+        });
+
+        function terminateSession() {
+            document.body.innerHTML = "<h1 style='color:white;text-align:center;margin-top:20%;'>GÜVENLİK İHLALİ TESPİT EDİLDİ! SİSTEM KAPATILDI.</h1>";
+            setTimeout(() => { window.location.href = "about:blank"; }, 1000);
+        }
+
+        // Konsol Açıldığında Algılama (Ekran Boyutu Kontrolü)
+        let threshold = 160;
+        setInterval(function() {
+            if (window.outerWidth - window.innerWidth > threshold || window.outerHeight - window.innerHeight > threshold) {
+                terminateSession();
+            }
+        }, 1000);
+    })();
+
+    // Firebase Entegrasyonu
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAdYx6KnAiSY6mVtkLt_ZK1R0Rq3Uh1tRY",
+        authDomain: "pastebin-61d0b.firebaseapp.com",
+        projectId: "pastebin-61d0b",
+        storageBucket: "pastebin-61d0b.firebasestorage.app",
+        messagingSenderId: "984614843816",
+        appId: "1:984614843816:web:77260642b9b5903833999d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let isAuthorized = false;
+
+    // Assets Hazırlığı
+    function base64ToUint8Array(base64) {
+        try {
+            const binary_string = window.atob(base64);
+            const bytes = new Uint8Array(binary_string.length);
+            for (let i = 0; i < binary_string.length; i++) {
+                bytes[i] = binary_string.charCodeAt(i);
+            }
+            return bytes;
+        } catch (e) { return new Uint8Array(); }
+    }
+
+    if(window.assetsUri) {
+        window.assetsData = base64ToUint8Array(window.assetsUri.slice(28));
+    }
+
+    // --- OTURUM VE PROFİL KONTROLÜ ---
+    onAuthStateChanged(auth, async (user) => {
+        const icon = document.getElementById('authStatusIcon');
+        const text = document.getElementById('authStatusText');
+        const subText = document.getElementById('authSubText');
+        const userDisplay = document.getElementById('displayUsername');
+        const avatarDisplay = document.getElementById('userAvatar');
+        const mainLogo = document.getElementById('mainLogo');
+        const btn = document.getElementById('btnContinue');
+
+        if (user) {
+            try {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                
+                if (userDoc.exists() && userDoc.data().setupComplete) {
+                    const userData = userDoc.data();
+                    isAuthorized = true; // Minecraft giriş izni verildi
+                    
+                    // Arayüz Güncelleme
+                    icon.textContent = "";
+                    text.textContent = "Doğrulandı";
+                    text.style.color = "#4ade80";
+                    
+                    // Logo gizle, Avatar göster
+                    mainLogo.style.display = "none";
+                    avatarDisplay.src = userData.avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix";
+                    avatarDisplay.style.display = "block";
+                    
+                    userDisplay.textContent = "@" + userData.username;
+                    userDisplay.style.display = "block";
+                    
+                    subText.textContent = "Giriş Yapıldı.";
+                    btn.style.display = "block";
+                    
+                } else {
+                    triggerDenial("Lütfen önce profil kurulumunu tamamlayın.");
+                }
+            } catch (e) { triggerDenial("Veri çekme hatası: " + e.code); }
+        } else {
+            triggerDenial("Oturum açılmamış. Giriş sayfasına yönlendiriliyorsunuz.");
+        }
+    });
+
+    function triggerDenial(reason) {
+        isAuthorized = false;
+        document.getElementById('authStatusIcon').textContent = "❌";
+        document.getElementById('authStatusText').textContent = "Erişim Engellendi";
+        document.getElementById('authStatusText').style.color = "#f43f5e";
+        document.getElementById('authSubText').textContent = reason;
+
+        setTimeout(() => {
+            window.location.href = "https://burakgtx.github.io/kayit.html";
+        }, 3000);
+    }
+
+    window.handleStart = () => {
+        if(!isAuthorized) return alert("Yetkisiz erişim engellendi!");
+        document.getElementById("authCheckScreen").classList.add("hidden");
+        
+        const ls = document.getElementById("loadingScreen");
+        ls.style.display = "flex";
+        
+        setTimeout(() => {
+            ls.style.opacity = "0";
+            setTimeout(() => {
+                ls.style.display = "none";
+                startGame();
+            }, 800);
+        }, 2500);
+    };
+
+    function startGame() {
+        // Hesap yoksa veya setupComplete değilse burası çalışsa bile isAuthorized engeller
+        if(!isAuthorized) {
+            window.location.reload();
+            return;
+        }
+
+        window.minecraftOpts = ["game_frame", ""];
+        if (typeof main === "function") {
+            main();
+        } else {
+            alert("Sistem hatası: Motor yüklenemedi!");
+        }
+    }
+</script>
+</body>
+</html>
