@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Güvenli Profil Sistemi v10 - Ultimate Edition</title>
+    
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; 
+        script-src 'self' 'unsafe-inline' https://www.gstatic.com; 
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
+        img-src 'self' data: https://burakgtx.neocities.org https://api.dicebear.com; 
+        connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.firebaseapp.com;
+        font-src 'self' https://fonts.gstatic.com;">
+
+    <style>
+        /* CSS Değişkenleri ve Global Ayarlar */
+        :root { 
+            --primary: #38bdf8; 
+            --bg: #0f172a; 
+            --card: #1e293b; 
+            --text: #f8fafc; 
+            --error: #f43f5e; 
+            --success: #4ade80; 
+            --border: #334155;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            transition: all 0.2s ease-in-out;
+        } 
+
+        body { 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            background: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 20px;
+        }
+
+        /* Kart Yapısı */
+        .card { 
+            background: var(--card); 
+            padding: 2.5rem; 
+            border-radius: 24px; 
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); 
+            width: 100%;
+            max-width: 420px; 
+            text-align: center; 
+            border: 1px solid var(--border); 
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Üst GIF Alanı */
+        .top-gif {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 16px;
+            margin-bottom: 25px;
+            border: 2px solid rgba(56, 189, 248, 0.1);
+            background: #000;
+        }
+
+        /* Yükleme Ekranı (Loading Screen) */
+        #loading-screen { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: var(--card); 
+            z-index: 10000; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+        }
+
+        .spinner { 
+            border: 4px solid rgba(255,255,255,0.05); 
+            border-left-color: var(--primary); 
+            border-radius: 50%; 
+            width: 50px; height: 50px; 
+            animation: spin 0.8s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite; 
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Form Elemanları */
+        input { 
+            width: 100%; 
+            padding: 15px; 
+            margin: 12px 0; 
+            border: 2px solid var(--border); 
+            border-radius: 14px; 
+            background: #0b1120; 
+            color: white; 
+            font-size: 16px;
+            display: block;
+            outline: none;
+        }
+
+        input:focus { 
+            border-color: var(--primary); 
+            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.1);
+        }
+
+        button { 
+            width: 100%; 
+            padding: 16px; 
+            background: var(--primary); 
+            color: #0f172a; 
+            border: none; 
+            border-radius: 14px; 
+            cursor: pointer; 
+            font-weight: 800; 
+            font-size: 16px; 
+            margin-top: 15px; 
+        }
+
+        button:hover { 
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
+
+        button:active { transform: translateY(0); }
+
+        button:disabled { 
+            background: #334155 !important; 
+            color: #64748b !important; 
+            cursor: not-allowed; 
+            transform: none !important;
+        }
+
+        .hidden { display: none !important; }
+        
+        /* Sekme Sistemi */
+        .tabs {
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 25px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 5px;
+        }
+
+        .tab-btn { 
+            background: transparent; 
+            color: #94a3b8; 
+            width: 49%; 
+            padding: 12px; 
+            border-radius: 10px;
+            cursor: pointer; 
+            font-weight: 700;
+            border: none;
+        }
+
+        .tab-btn.active { 
+            color: white; 
+            background: var(--card);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        /* Avatar Seçimi */
+        .avatar-grid { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 12px; 
+            margin: 25px 0; 
+        }
+
+        .avatar-item { 
+            width: 100%; 
+            aspect-ratio: 1; 
+            border-radius: 50%; 
+            cursor: pointer; 
+            border: 3px solid transparent; 
+            opacity: 0.4; 
+            padding: 2px;
+        }
+
+        .avatar-item.selected { 
+            border-color: var(--primary); 
+            opacity: 1; 
+            transform: scale(1.15);
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        /* Kod Kutusu */
+        .code-box { 
+            background: #0b1120; 
+            padding: 20px; 
+            border-radius: 15px; 
+            border: 2px dashed var(--primary); 
+            color: var(--primary); 
+            font-family: 'Courier New', Courier, monospace; 
+            font-size: 22px; 
+            letter-spacing: 2px;
+            margin: 20px 0; 
+            cursor: pointer; 
+            font-weight: bold;
+        }
+
+        /* Bildirim Kutusu */
+        #status-box { 
+            margin-top: 20px; 
+            padding: 14px; 
+            border-radius: 12px; 
+            font-size: 14px; 
+            display: none; 
+            animation: slideUp 0.3s ease-out; 
+            font-weight: 600;
+        }
+
+        @keyframes slideUp { 
+            from { transform: translateY(10px); opacity: 0; } 
+            to { transform: translateY(0); opacity: 1; } 
+        }
+
+        .error { background: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.2); }
+        .info { background: rgba(56, 189, 248, 0.15); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.2); }
+        .success { background: rgba(74, 222, 128, 0.15); color: #bbf7d0; border: 1px solid rgba(74, 222, 128, 0.2); }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p style="margin-top: 20px; color: var(--primary); font-weight: 600; letter-spacing: 1px;">Sistem Doğrulanıyor...</p>
+    </div>
+
+    <img src="https://burakgtx.neocities.org/image/seno.png" class="top-gif" alt="Security Header">
+
+    <div id="ui-auth-tabs" class="hidden">
+        <div class="tabs">
+            <button class="tab-btn active" id="tab-reg" onclick="switchAuth('reg')">Yeni Kayıt</button>
+            <button class="tab-btn" id="tab-login" onclick="switchAuth('login')">Giriş Yap</button>
+        </div>
+        
+        <div id="panel-reg">
+            <input type="email" id="reg-email" placeholder="E-posta Adresi" autocomplete="email">
+            <button onclick="initiateAuth()">Kayıt Bağlantısı Gönder</button>
+        </div>
+        
+        <div id="panel-login" class="hidden">
+            <input type="email" id="login-email" placeholder="E-posta" autocomplete="email">
+            <input type="password" id="login-code" placeholder="Güvenlik Kodu" autocomplete="current-password">
+            <button onclick="loginWithCode()">Sisteme Gir</button>
+        </div>
+    </div>
+
+    <div id="ui-wait" class="hidden">
+        <div id="timer-display" style="font-size: 50px; color: var(--error); font-weight: 900; margin: 15px 0;">02:00</div>
+        <p style="font-size: 15px; line-height: 1.6;">Lütfen e-posta kutunuzu kontrol edin ve gelen bağlantıya tıklayın.</p>
+        <button onclick="logout()" style="background:transparent; color:var(--error); border:2px solid var(--error);">İşlemi İptal Et</button>
+    </div>
+
+    <div id="ui-setup" class="hidden">
+        <h3 style="margin: 0 0 10px 0; font-size: 22px;">Hesabını Özelleştir</h3>
+        <p style="font-size: 14px; color: #94a3b8; margin-bottom: 20px;">Benzersiz bir kullanıcı adı ve avatar seçin.</p>
+        <input type="text" id="setup-username" placeholder="Kullanıcı Adı (Örn: bura_k12)" maxlength="15">
+        <div class="avatar-grid" id="avatar-list"></div>
+        <button onclick="goToCodeStep()">Kodu Al ve İlerle</button>
+    </div>
+
+    <div id="ui-show-code" class="hidden">
+        <h3 style="color: var(--success); margin: 0;">Güvenlik Anahtarın</h3>
+        <p style="font-size: 13px; color: #94a3b8; margin: 10px 0;">Bu kodu bir yere not edin, giriş için gereklidir.</p>
+        <div class="code-box" id="generated-code-display" onclick="copyCode()">--------</div>
+        <button id="btn-finish-setup" disabled>Kodu Kopyala (10s)</button>
+    </div>
+
+    <div id="ui-main" class="hidden">
+        <div style="position: relative; display: inline-block;">
+            <img id="main-avatar" src="" style="width:120px; height:120px; border-radius:50%; border:4px solid var(--primary); padding: 5px; background: #0b1120;">
+            <div style="position: absolute; bottom: 10px; right: 5px; width: 20px; height: 20px; background: var(--success); border-radius: 50%; border: 3px solid var(--card);"></div>
+        </div>
+        <h2 id="main-username" style="margin: 15px 0 5px 0; font-size: 26px;"></h2>
+        <p id="main-email" style="font-size: 14px; color: #64748b; margin-bottom: 25px;"></p>
+        
+        <div style="background: #0b1120; padding: 18px; border-radius: 16px; border: 1px solid var(--border); cursor: pointer;" onclick="copyCodeFromMain()">
+            <p style="font-size: 11px; color: var(--primary); font-weight: 800; margin: 0 0 8px 0; text-transform: uppercase;">Erişim Anahtarın</p>
+            <p style="letter-spacing: 6px; font-weight: bold; margin: 0; color: #94a3b8;">********</p>
+        </div>
+        
+        <button onclick="logout()" style="background: var(--error); color:white; margin-top:30px;">Güvenli Çıkış Yap</button>
+    </div>
+
+    <div id="status-box"></div>
+</div>
+
+<script type="module" src="index-072.js"></script>
+
+</body>
+</html>
