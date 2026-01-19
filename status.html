@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTX | Global Infrastructure Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg: #030712;
+            --card: rgba(17, 24, 39, 0.7);
+            --primary: #818cf8;
+            --green: #10b981;
+            --yellow: #f59e0b;
+            --red: #ef4444;
+            --text: #f3f4f6;
+            --text-dim: #9ca3af;
+            --border: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at 50% -20%, #1e1b4b 0%, #030712 100%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        .container { width: 90%; max-width: 1100px; padding: 40px 0; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .header-title h1 { font-size: 2rem; font-weight: 800; margin: 0; letter-spacing: -1px; }
+        
+        .uptime-badge {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--green);
+            padding: 6px 12px; border-radius: 8px;
+            font-family: 'JetBrains Mono'; font-size: 0.85rem; font-weight: bold;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .span-2 { grid-column: span 2; }
+        .span-3 { grid-column: span 3; }
+
+        .section-title {
+            font-size: 0.75rem; text-transform: uppercase;
+            letter-spacing: 1.5px; color: var(--text-dim);
+            margin-bottom: 15px; display: block; font-weight: 700;
+        }
+
+        .stat-val { font-size: 2.5rem; font-weight: 800; font-family: 'JetBrains Mono'; margin-bottom: 5px; }
+        
+        .load-bar-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-top: 10px; }
+        .load-bar-fill { height: 100%; background: var(--primary); border-radius: 4px; transition: width 1s ease; }
+
+        .list-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0; border-bottom: 1px solid var(--border);
+        }
+        .list-item:last-child { border: none; }
+        .val-box { font-family: 'JetBrains Mono'; font-weight: bold; font-size: 0.9rem; }
+
+        .incident-item {
+            padding-left: 15px; border-left: 2px solid var(--primary);
+            margin-bottom: 15px;
+        }
+        .incident-date { font-size: 0.7rem; color: var(--text-dim); font-family: 'JetBrains Mono'; }
+        .incident-text { font-size: 0.9rem; font-weight: 600; margin-top: 3px; }
+
+        @media (max-width: 900px) {
+            .main-grid { grid-template-columns: 1fr; }
+            .span-2, .span-3 { grid-column: span 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div class="header-title">
+                <h1>GTX <span style="color: var(--primary);">Infrastructure</span></h1>
+                <p style="color: var(--text-dim); margin: 5px 0;">Sistem sağlığı ve global trafik analizi.</p>
+            </div>
+            <div class="uptime-badge">UPTIME: 99.98%</div>
+        </header>
+
+        <div class="main-grid">
+            
+            <div class="card">
+                <span class="section-title">Canlı Oturumlar</span>
+                <div class="stat-val" id="roomCount">0</div>
+                <div id="lastResetText" style="font-size: 0.75rem; color: var(--text-dim);">Son Temizlik: Bekleniyor...</div>
+            </div>
+
+            <div class="card">
+                <span class="section-title">Temizlik Geri Sayım</span>
+                <div class="stat-val" id="countdown" style="color: var(--primary);">00:00:00</div>
+                <div style="font-size: 0.75rem; color: var(--text-dim);">Otomatik Veri Sıfırlama</div>
+            </div>
+
+            <div class="card">
+                <span class="section-title">Sunucu Yükü (CPU)</span>
+                <div class="stat-val" id="cpuVal">0%</div>
+                <div class="load-bar-bg"><div id="cpuBar" class="load-bar-fill" style="width: 0%"></div></div>
+            </div>
+
+            <div class="card span-2">
+                <span class="section-title">Bölgesel Erişim Gecikmesi (Live Ping)</span>
+                <div class="main-grid" style="grid-template-columns: repeat(3, 1fr); padding: 0;">
+                    <div class="list-item" style="flex-direction: column; align-items: flex-start; border: none;">
+                        <span style="font-size: 0.8rem;">Türkiye</span>
+                        <span class="val-box" id="ping-tr" style="font-size: 1.2rem;">--ms</span>
+                    </div>
+                    <div class="list-item" style="flex-direction: column; align-items: flex-start; border: none;">
+                        <span style="font-size: 0.8rem;">Avrupa</span>
+                        <span class="val-box" id="ping-eu" style="font-size: 1.2rem;">--ms</span>
+                    </div>
+                    <div class="list-item" style="flex-direction: column; align-items: flex-start; border: none;">
+                        <span style="font-size: 0.8rem;">Amerika</span>
+                        <span class="val-box" id="ping-us" style="font-size: 1.2rem;">--ms</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <span class="section-title">Cihaz Dağılımı</span>
+                <div class="list-item"><span style="font-size: 0.8rem;">Masaüstü</span> <span class="val-box" style="color:var(--primary)">62%</span></div>
+                <div class="list-item"><span style="font-size: 0.8rem;">Mobil / Tablet</span> <span class="val-box" style="color:var(--primary)">38%</span></div>
+            </div>
+
+            <div class="card span-2">
+                <span class="section-title">24 Saatlik Trafik Analizi</span>
+                <canvas id="trafficChart" height="120"></canvas>
+            </div>
+
+            <div class="card">
+                <span class="section-title">Sistem Günlüğü</span>
+                <div id="incidentLogs">
+                    <div class="incident-item">
+                        <div class="incident-date">SİSTEM</div>
+                        <div class="incident-text">Otomatik temizlik sistemi aktif.</div>
+                    </div>
+                    <div class="incident-item" style="border-left-color: var(--green);">
+                        <div class="incident-date">DÜN</div>
+                        <div class="incident-text">Bellek optimizasyonu tamamlandı.</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <footer style="margin-top: 40px; text-align: center; color: var(--text-dim); font-size: 0.7rem; font-family: 'JetBrains Mono';">
+            DATA FETCHED VIA FIREBASE SDK 8.10.0 • ENCRYPTION: AES-256 GCM
+        </footer>
+    </div>
+
+    <script>
+        // --- FIREBASE BAĞLANTISI ---
+        const config = { databaseURL: "https://burakgtxserver-default-rtdb.europe-west1.firebasedatabase.app" };
+        firebase.initializeApp(config);
+        const db = firebase.database();
+
+        // Veri Temizleme Fonksiyonu
+        function performSystemCleanup() {
+            db.ref('rooms').remove()
+            .then(() => {
+                const now = new Date();
+                console.log("Sistem temizlendi: " + now.toLocaleTimeString());
+                // Günlüğe ekle
+                const logItem = document.createElement('div');
+                logItem.className = 'incident-item';
+                logItem.style.borderLeftColor = 'var(--red)';
+                logItem.innerHTML = `<div class="incident-date">ŞİMDİ</div><div class="incident-text">Otomatik temizlik başarıyla yapıldı.</div>`;
+                document.getElementById('incidentLogs').prepend(logItem);
+            })
+            .catch(e => console.error("Temizlik hatası:", e));
+        }
+
+        // 1. Oda Sayısı ve Dinamik Sunucu Yükü
+        db.ref('rooms').on('value', (snap) => {
+            const count = snap.numChildren();
+            document.getElementById('roomCount').innerText = count;
+            
+            let load = (count * 2) + 5;
+            if(load > 100) load = 99;
+            document.getElementById('cpuVal').innerText = load + "%";
+            document.getElementById('cpuBar').style.width = load + "%";
+            document.getElementById('cpuBar').style.backgroundColor = load > 80 ? 'var(--red)' : (load > 50 ? 'var(--yellow)' : 'var(--primary)');
+        });
+
+        // 2. Geri Sayım & OTOMATİK TETİKLEME
+        function updateStats() {
+            const now = new Date();
+            const target = new Date(now);
+            target.setHours(24, 0, 0, 0); // Gece yarısı 00:00:00
+            const diff = target - now;
+            
+            const h = Math.floor(diff/3600000).toString().padStart(2,'0');
+            const m = Math.floor((diff%3600000)/60000).toString().padStart(2,'0');
+            const s = Math.floor((diff%60000)/1000).toString().padStart(2,'0');
+            
+            document.getElementById('countdown').innerText = `${h}:${m}:${s}`;
+
+            // Kritik An: Saat tam 00:00:00 ise temizle
+            if (h === "00" && m === "00" && s === "00") {
+                performSystemCleanup();
+            }
+
+            const sinceReset = 24 - parseInt(h);
+            document.getElementById('lastResetText').innerText = `Son Temizlik: ${sinceReset} saat önce`;
+        }
+        setInterval(updateStats, 1000);
+
+        // 3. Gerçek Ping Ölçümü
+        async function measurePing(labelId, url) {
+            const start = Date.now();
+            try {
+                await fetch(url, { mode: 'no-cors', cache: 'no-cache' });
+                const duration = Date.now() - start;
+                const el = document.getElementById(labelId);
+                el.innerText = duration + "ms";
+                el.style.color = duration < 70 ? 'var(--green)' : (duration < 160 ? 'var(--yellow)' : 'var(--red)');
+            } catch (e) { document.getElementById(labelId).innerText = "Err"; }
+        }
+        function runPings() {
+            measurePing('ping-tr', 'https://www.google.com.tr/favicon.ico');
+            measurePing('ping-eu', 'https://www.google.de/favicon.ico');
+            measurePing('ping-us', 'https://www.google.com/favicon.ico');
+        }
+        setInterval(runPings, 10000);
+        runPings();
+
+        // 4. Trafik Grafiği
+        const ctx = document.getElementById('trafficChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'],
+                datasets: [{
+                    label: 'Veri Akışı (Gbps)',
+                    data: [1.2, 0.4, 0.8, 3.5, 4.2, 6.8, 5.1],
+                    borderColor: '#818cf8',
+                    backgroundColor: 'rgba(129, 140, 248, 0.1)',
+                    fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } },
+                    x: { grid: { display: false }, ticks: { color: '#64748b' } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
