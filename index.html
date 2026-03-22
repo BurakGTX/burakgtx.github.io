@@ -1,1 +1,492 @@
-a
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xylochron HTML Studio</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ext-language_tools.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #07090e;
+            --panel-bg: rgba(13, 17, 23, 0.98);
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --text: #e6edf3;
+            --border: rgba(255, 255, 255, 0.08);
+            --danger: #ff4b2b;
+            --card-bg: #0d1117;
+            --success: #22c55e;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        
+        body { 
+            background-color: var(--bg-dark); 
+            color: var(--text); 
+            height: 100vh; 
+            width: 100vw;
+            overflow: hidden; 
+        }
+
+        /* --- Auth Section --- */
+        #login-screen {
+            position: fixed; inset: 0;
+            background: radial-gradient(circle at center, #161b22 0%, #07090e 100%);
+            display: flex; justify-content: center; align-items: center; z-index: 100000;
+            transition: opacity 0.8s ease;
+        }
+
+        .login-card {
+            background: var(--panel-bg); backdrop-filter: blur(30px);
+            padding: 60px; border-radius: 40px; border: 1px solid var(--border);
+            text-align: center; box-shadow: 0 30px 60px rgba(0,0,0,0.8); width: 450px;
+        }
+
+        .google-btn {
+            display: flex; align-items: center; gap: 15px; background: white; color: #000; 
+            padding: 18px; border-radius: 18px; border: none; font-weight: 800; cursor: pointer;
+            transition: 0.3s; width: 100%; justify-content: center; margin-top: 30px;
+        }
+        .google-btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 10px 30px var(--accent-glow); }
+        .google-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* --- Loader --- */
+        #loading-screen {
+            position: fixed; inset: 0; background: var(--bg-dark);
+            display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100001;
+        }
+
+        /* --- Viewport Logic --- */
+        .viewport-wrapper {
+            display: flex;
+            width: 200vw;
+            height: 100vh;
+            transition: transform 0.8s cubic-bezier(0.85, 0, 0.15, 1);
+        }
+
+        .show-editor { transform: translateX(-100vw); }
+
+        /* --- Menu Module --- */
+        .menu-view {
+            width: 100vw; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            background: #07090e;
+        }
+
+        .main-card {
+            width: 420px; background: #0d1117; border-radius: 45px; padding: 40px;
+            border: 1px solid var(--border); display: flex; flex-direction: column;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+        }
+
+        .user-profile-header { display: flex; align-items: center; gap: 15px; margin-bottom: 35px; }
+        .user-profile-header img {
+            width: 65px; height: 65px; border-radius: 50%; border: 3px solid var(--accent); padding: 3px;
+        }
+
+        .storage-box {
+            background: rgba(255,255,255,0.03); border-radius: 25px; padding: 20px;
+            border: 1px solid var(--border); margin-bottom: 30px;
+        }
+
+        .storage-bar-bg { height: 8px; background: #1c2128; border-radius: 10px; overflow: hidden; margin-top: 12px; }
+        .storage-bar-fill {
+            height: 100%; width: 0%; background: var(--accent);
+            box-shadow: 0 0 15px var(--accent-glow); transition: 1s cubic-bezier(0.2, 1, 0.2, 1);
+        }
+
+        .project-list { flex-grow: 1; max-height: 320px; overflow-y: auto; margin-bottom: 25px; }
+        .project-card {
+            background: rgba(255,255,255,0.02); border-radius: 20px; padding: 18px; margin-bottom: 12px;
+            display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+            transition: 0.3s; border: 1px solid transparent;
+        }
+        .project-card:hover { background: rgba(56, 189, 248, 0.05); border-color: var(--accent); }
+
+        .btn-action {
+            width: 100%; padding: 18px; border-radius: 18px; border: none;
+            font-weight: 800; font-size: 14px; cursor: pointer; transition: 0.3s; text-transform: uppercase;
+        }
+        .btn-blue { background: var(--accent); color: #000; }
+        .btn-blue:hover { filter: brightness(1.1); box-shadow: 0 5px 20px var(--accent-glow); }
+
+        /* --- Editor Module (Refined) --- */
+        .editor-view { width: 100vw; height: 100vh; padding: 20px; display: flex; gap: 20px; }
+        .editor-container { flex: 0.85; display: flex; flex-direction: column; gap: 15px; }
+        
+        #editor {
+            flex-grow: 1; border-radius: 25px; border: 1px solid var(--border);
+            background: #000; overflow: hidden; font-size: 16px;
+        }
+
+        .preview-container {
+            flex: 1.15; background: #fff; border-radius: 25px; overflow: hidden;
+            border: 1px solid var(--border); box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        #goster { width: 100%; height: 100%; border: none; }
+
+        .editor-controls { display: flex; gap: 10px; }
+        .editor-controls .btn-action { flex: 1; height: 55px; display: flex; align-items: center; justify-content: center; }
+
+        /* --- Modals --- */
+        .modal-overlay { 
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); 
+            z-index: 200000; justify-content: center; align-items: center; backdrop-filter: blur(10px);
+        }
+        .modal-body { 
+            background: #161b22; padding: 40px; border-radius: 35px; width: 400px; 
+            text-align: center; border: 1px solid var(--border);
+        }
+        .modal-body input { 
+            width: 100%; padding: 18px; margin: 20px 0; background: #07090e; 
+            border: 1px solid var(--border); color: white; border-radius: 15px; 
+            text-align: center; font-size: 16px; outline: none;
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="login-screen">
+    <div class="login-card">
+        <h1 style="font-size: 32px; font-weight: 900; letter-spacing: -1px;">BurakGTX<span style="color:var(--accent)"> | Studio</span></h1>
+        <p style="opacity: 0.4; font-size: 12px; margin-top: 5px;"></p>
+        <div class="g-recaptcha" data-sitekey="6Le52pMsAAAAAFwtMOcMtU7iyPftYMXTjJeAQrJ8" data-callback="verifyCaptcha" style="margin: 30px 0; display: flex; justify-content: center;"></div>
+        <button class="google-btn" id="google-login" disabled>
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20">
+            Google ile Giriş Yap
+        </button>
+    </div>
+</div>
+
+<div id="loading-screen">
+    <div id="boot-profile"></div>
+    <div style="width: 200px; height: 2px; background: #161b22; margin-top: 30px; border-radius: 5px; overflow: hidden;">
+        <div id="boot-progress" style="width: 0%; height: 100%; background: var(--accent); transition: 0.1s;"></div>
+    </div>
+    <p id="boot-status" style="margin-top: 15px; font-size: 9px; letter-spacing: 3px; color: var(--accent); font-weight: 700;">Senkronize Ediliyor...</p>
+</div>
+
+<div class="viewport-wrapper" id="master-view">
+    
+    <div class="menu-view">
+        <div class="main-card">
+            <div class="user-profile-header" id="user-display"></div>
+            
+            <div class="storage-box">
+                <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:800; color:var(--accent);">
+                    <span>Depolama</span>
+                    <span id="storage-perc">%0.0</span>
+                </div>
+                <div class="storage-bar-bg">
+                    <div class="storage-bar-fill" id="storage-fill"></div>
+                </div>
+                <div style="font-size:9px; opacity:0.4; margin-top:8px;" id="storage-detail">0.00 MB / 2.00 MB</div>
+            </div>
+
+            <h3 style="font-size:10px; opacity:0.3; letter-spacing: 2px; margin-bottom: 15px; font-weight: 800;">Benim Projelerim</h3>
+            <div class="project-list" id="project-anchor"></div>
+            
+            <button class="btn-action btn-blue" id="new-project-btn">YENİ PROJE OLUŞTUR</button>
+            <button id="logout-trigger" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:700; font-size:11px; margin-top:15px; opacity:0.6;">Oturumu Kapat</button>
+        </div>
+    </div>
+
+    <div class="editor-view">
+        <div class="editor-container">
+            <div id="editor-meta" style="display:flex; justify-content:space-between; align-items:center;">
+                <div id="editor-user-mini" style="display:flex; align-items:center; gap:10px; opacity:0.7;"></div>
+                <div id="active-project-name" style="font-size:11px; font-weight:800; color:var(--accent); letter-spacing:1px;">DRAFT_UNSAVED</div>
+            </div>
+            <div id="editor"></div>
+            <div class="editor-controls">
+                <button class="btn-action btn-blue" id="save-current">BULUTA SENKRONİZE ET</button>
+                <button class="btn-action" id="switch-to-menu" style="background:#21262d; color:white;">MENÜYE DÖN</button>
+            </div>
+        </div>
+        <div class="preview-container">
+            <iframe id="goster" sandbox="allow-scripts allow-modals allow-forms allow-same-origin"></iframe>
+        </div>
+    </div>
+</div>
+
+<div id="global-modal" class="modal-overlay">
+    <div class="modal-body">
+        <h2 id="modal-head" style="color:var(--accent); font-weight:800; font-size:20px;">SYSTEM</h2>
+        <p id="modal-text" style="opacity:0.6; font-size:13px; margin-top:8px; line-height:1.5;"></p>
+        <div id="modal-input-field">
+            <input type="text" id="m-input" maxlength="16" spellcheck="false" placeholder="...">
+        </div>
+        <div style="display:flex; gap:12px;">
+            <button id="m-no" style="flex:1; padding:16px; border-radius:15px; border:none; background:#21262d; color:white; cursor:pointer; font-weight:700;">İPTAL</button>
+            <button id="m-yes" style="flex:1; padding:16px; border-radius:15px; border:none; background:var(--accent); color:#000; font-weight:800; cursor:pointer;">ONAYLA</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- FIREBASE CONFIGURATION ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyDtRpEZoHyZJ5hlIiNbVu45RUAs_Hdy2Eg",
+        authDomain: "genx-8b75e.firebaseapp.com",
+        databaseURL: "https://genx-8b75e-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "genx-8b75e",
+        storageBucket: "genx-8b75e.firebasestorage.app",
+        messagingSenderId: "414668000487",
+        appId: "1:414668000487:web:48bc209ff7e7af0651e642"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+    const google = new firebase.auth.GoogleAuthProvider();
+
+    // --- ACE EDITOR SETUP ---
+    const editor = ace.edit("editor");
+    editor.setTheme("ace/theme/monokai");
+    editor.session.setMode("ace/mode/html");
+    editor.setOptions({
+        fontFamily: "'Fira Code', monospace",
+        fontSize: "15px",
+        showPrintMargin: false,
+        useWorker: false,
+        enableBasicAutocompletion: true,
+        enableLiveAutocompletion: true
+    });
+
+    // --- GLOBAL STATE ---
+    let activeUser = null;
+    let currentProjectId = null;
+    let currentProjectName = "DRAFT_UNSAVED";
+    const MAX_QUOTA = 2 * 1024 * 1024; // 2MB Limit
+    let usedSpaceTotal = 0;
+
+    // --- NAVIGATION ---
+    const viewport = document.getElementById('master-view');
+    document.getElementById('new-project-btn').onclick = () => {
+        currentProjectId = null;
+        currentProjectName = "Yeni Proje";
+        document.getElementById('active-project-name').innerText = currentProjectName;
+        editor.setValue("\n<h1>Merhaba Dünya!</h1>", -1);
+        viewport.classList.add('show-editor');
+        editor.resize();
+    };
+    
+    document.getElementById('switch-to-menu').onclick = () => viewport.classList.remove('show-editor');
+
+    // --- AUTH LOGIC ---
+    window.verifyCaptcha = () => document.getElementById('google-login').disabled = false;
+    document.getElementById('google-login').onclick = () => auth.signInWithPopup(google);
+    document.getElementById('logout-trigger').onclick = () => auth.signOut().then(() => location.reload());
+
+    auth.onAuthStateChanged(user => {
+        if(user) {
+            activeUser = user;
+            document.getElementById('login-screen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('login-screen').style.display = 'none';
+                initBoot(user);
+            }, 800);
+        }
+    });
+
+    function initBoot(user) {
+        const boot = document.getElementById('loading-screen');
+        const bar = document.getElementById('boot-progress');
+        boot.style.display = 'flex';
+        document.getElementById('boot-profile').innerHTML = `
+            <div style="text-align:center">
+                <img src="${user.photoURL}" style="width:80px; border-radius:50%; border:2px solid var(--accent); padding:4px;">
+                <h2 style="margin-top:15px; font-weight:800; font-size:16px; letter-spacing:1px;">${user.displayName.toUpperCase()}</h2>
+            </div>
+        `;
+        let prg = 0;
+        const intr = setInterval(() => {
+            prg += Math.random() * 15;
+            if(prg > 100) prg = 100;
+            bar.style.width = prg + "%";
+            if(prg >= 100) { clearInterval(intr); setTimeout(coreStart, 400); }
+        }, 80);
+    }
+
+    function coreStart() {
+        document.getElementById('loading-screen').style.display = 'none';
+        const userHtml = `
+            <img src="${activeUser.photoURL}" style="width:55px; border-radius:50%; border:2px solid var(--accent);">
+            <div>
+                <div style="font-weight:800; font-size:15px;">${activeUser.displayName}</div>
+                <div style="font-size:9px; color:var(--accent); font-weight:700;">ID: ${activeUser.uid.substring(0,7)}..</div>
+            </div>
+        `;
+        document.getElementById('user-display').innerHTML = userHtml;
+        document.getElementById('editor-user-mini').innerHTML = userHtml;
+        syncCloud();
+    }
+
+    // --- DATABASE & STORAGE ---
+    function syncCloud() {
+        db.ref('users/' + activeUser.uid).on('value', snap => {
+            const data = snap.val() || {};
+            const projects = data.projects || {};
+            const anchor = document.getElementById('project-anchor');
+            anchor.innerHTML = '';
+            
+            let calcSize = 0;
+            Object.keys(projects).forEach(id => {
+                const p = projects[id];
+                const size = new Blob([p.name + p.code]).size;
+                calcSize += size;
+
+                const card = document.createElement('div');
+                card.className = 'project-card';
+                card.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span style="font-size:20px;">📂</span>
+                        <div>
+                            <div style="font-weight:700; font-size:13px;">${p.name}</div>
+                            <div style="font-size:9px; opacity:0.4;">${(size/1024).toFixed(2)} KB</div>
+                        </div>
+                    </div>
+                    <div style="color:var(--danger); font-size:20px; font-weight:900; padding:5px;" onclick="killProject('${id}', event)">×</div>
+                `;
+                card.onclick = () => loadProject(id, p);
+                anchor.appendChild(card);
+            });
+
+            usedSpaceTotal = calcSize;
+            updateStorageUI();
+            
+            // Rules'daki storage_used hatasını çözmek için burası kritik:
+            db.ref('users/' + activeUser.uid + '/storage_used').set(usedSpaceTotal);
+        });
+    }
+
+    function updateStorageUI() {
+        const perc = (usedSpaceTotal / MAX_QUOTA) * 100;
+        document.getElementById('storage-fill').style.width = Math.min(perc, 100) + "%";
+        document.getElementById('storage-perc').innerText = "%" + perc.toFixed(1);
+        document.getElementById('storage-detail').innerText = (usedSpaceTotal/(1024*1024)).toFixed(2) + " MB / 2.00 MB";
+        
+        if(perc > 90) document.getElementById('storage-fill').style.background = "var(--danger)";
+        else document.getElementById('storage-fill').style.background = "var(--accent)";
+    }
+
+    function loadProject(id, data) {
+        currentProjectId = id;
+        currentProjectName = data.name;
+        document.getElementById('active-project-name').innerText = currentProjectName.toUpperCase();
+        editor.setValue(data.code, -1);
+        viewport.classList.add('show-editor');
+        editor.resize();
+    }
+
+    document.getElementById('save-current').onclick = async () => {
+        const code = editor.getValue();
+        const currentSize = new Blob([currentProjectName + code]).size;
+
+        if((usedSpaceTotal + currentSize) > MAX_QUOTA) {
+            triggerAlert("KOTA DOLDU", "2MB limitine ulaştınız. Lütfen bazı projeleri silin.");
+            return;
+        }
+
+        // Eğer yeni projeyse isim sor, mevcutsa direkt üzerine yaz
+        if(!currentProjectId) {
+            const name = await triggerPrompt("YENİ KAYIT", "Proje ismi girin (Maks 16 karakter):");
+            if(name && name.length <= 16) {
+                const newRef = db.ref('users/' + activeUser.uid + '/projects').push();
+                newRef.set({
+                    name: name,
+                    code: code,
+                    at: firebase.database.ServerValue.TIMESTAMP
+                }).then(() => {
+                    currentProjectId = newRef.key;
+                    currentProjectName = name;
+                    document.getElementById('active-project-name').innerText = name.toUpperCase();
+                    triggerAlert("BAŞARILI", "Proje buluta kaydedildi.");
+                }).catch(err => triggerAlert("HATA", "Yetki reddedildi: " + err.message));
+            }
+        } else {
+            // Mevcut projeyi güncelle
+            db.ref('users/' + activeUser.uid + '/projects/' + currentProjectId).update({
+                code: code,
+                at: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                triggerAlert("GÜNCELLENDİ", "Değişiklikler başarıyla senkronize edildi.");
+            }).catch(err => triggerAlert("HATA", "Güncelleme başarısız: " + err.message));
+        }
+    };
+
+    window.killProject = async (id, e) => {
+        e.stopPropagation();
+        const confirm = await triggerPrompt("SİLME İŞLEMİ", "Silmek için 'SİL' yazın:");
+        if(confirm === 'SİL') {
+            db.ref('users/' + activeUser.uid + '/projects/' + id).remove();
+            if(currentProjectId === id) {
+                currentProjectId = null;
+                viewport.classList.remove('show-editor');
+            }
+        }
+    };
+
+    // --- UI MODALS ---
+    const modal = document.getElementById('global-modal');
+    const mInput = document.getElementById('m-input');
+    let modalResolver = null;
+
+    function triggerPrompt(title, text) {
+        return new Promise(resolve => {
+            document.getElementById('modal-head').innerText = title;
+            document.getElementById('modal-text').innerText = text;
+            document.getElementById('modal-input-field').style.display = 'block';
+            mInput.value = "";
+            modal.style.display = 'flex';
+            modalResolver = resolve;
+        });
+    }
+
+    function triggerAlert(title, text) {
+        document.getElementById('modal-head').innerText = title;
+        document.getElementById('modal-text').innerText = text;
+        document.getElementById('modal-input-field').style.display = 'none';
+        modal.style.display = 'flex';
+        modalResolver = null;
+    }
+
+    document.getElementById('m-yes').onclick = () => {
+        modal.style.display = 'none';
+        if(modalResolver) modalResolver(mInput.value);
+    };
+
+    document.getElementById('m-no').onclick = () => {
+        modal.style.display = 'none';
+        if(modalResolver) modalResolver(null);
+    };
+-
+    editor.session.on('change', () => {
+        const target = document.getElementById('goster').contentDocument;
+        target.open();
+        target.write(editor.getValue());
+        target.close();
+    });
+
+    window.addEventListener('resize', () => editor.resize());
+
+    console.log("v4.6 Initialized Successfully.");
+    console.log("Cloud enforced: 2MB per user.");
+    console.log("Auth Provider: Google Firebase.");
+</script>
+
+</body>
+</html>
