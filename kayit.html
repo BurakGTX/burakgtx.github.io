@@ -3,17 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kayit/giris</title>
+    <title>Kayıt / Giriş</title>
     
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; 
-        script-src 'self' 'unsafe-inline' https://www.gstatic.com; 
-        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
-        img-src 'self' data: https://burakgtx.neocities.org https://api.dicebear.com; 
-        connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.firebaseapp.com;
-        font-src 'self' https://fonts.gstatic.com;">
+        script-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' 'unsafe-inline' https://www.gstatic.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net;
+        style-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' 'unsafe-inline' https://fonts.googleapis.com; 
+        img-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' data: https://burakgtx.neocities.org https://api.dicebear.com https://flagcdn.com;
+        connect-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' https://*.firebaseio.com https://*.googleapis.com https://*.firebaseapp.com https://www.google.com https://recaptcha.google.com https://www.recaptcha.net;
+        font-src 'self' https://fonts.gstatic.com; 
+        child-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self'; 
+        frame-src https://gc.kis.v2.scr.kaspersky-labs.com wss://gc.kis.v2.scr.kaspersky-labs.com 'self' https://www.google.com https://recaptcha.google.com https://www.recaptcha.net;">
 
+    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=0m8wuokS_VVDxKDviF2UwQD7bnDZnjdtd1x41kpsSFKdilkSYzQoYRj98PquN0nf8kJtBCSFj48G2FwIFRddVQ" charset="UTF-8"></script>
+    
     <style>
-        /* CSS Değişkenleri ve Global Ayarlar */
         :root { 
             --primary: #38bdf8; 
             --bg: #0f172a; 
@@ -41,7 +44,6 @@
             padding: 20px;
         }
 
-        /* Kart Yapısı */
         .card { 
             background: var(--card); 
             padding: 2.5rem; 
@@ -55,18 +57,50 @@
             overflow: hidden;
         }
 
-        /* Üst GIF Alanı */
+        .lang-switch {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0 20px 0;
+            z-index: 100;
+        }
+
+        .lang-btn {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--border);
+            color: #94a3b8;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-weight: 600;
+        }
+
+        .lang-btn.active {
+            background: var(--primary);
+            color: #0f172a;
+            border-color: var(--primary);
+        }
+
+        .lang-btn img {
+            width: 20px;
+            height: 15px;
+            border-radius: 2px;
+        }
+
         .top-gif {
             width: 100%;
             height: 140px;
             object-fit: cover;
             border-radius: 16px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             border: 2px solid rgba(56, 189, 248, 0.1);
             background: #000;
         }
 
-        /* Yükleme Ekranı (Loading Screen) */
         #loading-screen { 
             position: absolute; 
             top: 0; left: 0; 
@@ -89,7 +123,6 @@
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Form Elemanları */
         input { 
             width: 100%; 
             padding: 15px; 
@@ -121,10 +154,7 @@
             margin-top: 15px; 
         }
 
-        button:hover { 
-            filter: brightness(1.1);
-            transform: translateY(-2px);
-        }
+        button:hover { filter: brightness(1.1); transform: translateY(-2px); }
 
         button:active { transform: translateY(0); }
 
@@ -132,16 +162,14 @@
             background: #334155 !important; 
             color: #64748b !important; 
             cursor: not-allowed; 
-            transform: none !important;
         }
 
         .hidden { display: none !important; }
         
-        /* Sekme Sistemi */
         .tabs {
             display: flex; 
             justify-content: space-between; 
-            margin-bottom: 25px;
+            margin-bottom: 15px;
             background: rgba(0,0,0,0.2);
             border-radius: 12px;
             padding: 5px;
@@ -164,7 +192,6 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
-        /* Avatar Seçimi */
         .avatar-grid { 
             display: grid; 
             grid-template-columns: repeat(4, 1fr); 
@@ -189,7 +216,6 @@
             background: rgba(56, 189, 248, 0.1);
         }
 
-        /* Kod Kutusu */
         .code-box { 
             background: #0b1120; 
             padding: 20px; 
@@ -204,7 +230,6 @@
             font-weight: bold;
         }
 
-        /* Bildirim Kutusu */
         #status-box { 
             margin-top: 20px; 
             padding: 14px; 
@@ -221,8 +246,30 @@
         }
 
         .error { background: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.2); }
-        .info { background: rgba(56, 189, 248, 0.15); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.2); }
         .success { background: rgba(74, 222, 128, 0.15); color: #bbf7d0; border: 1px solid rgba(74, 222, 128, 0.2); }
+
+        .g-recaptcha {
+            display: flex;
+            justify-content: center;
+            margin: 18px 0;
+        }
+
+        .footer-main {
+            margin-top: 35px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
+            font-size: 12.5px;
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        .rollback-box {
+            background: #1e2937;
+            border: 2px solid #f43f5e;
+            border-radius: 16px;
+            padding: 25px 20px;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
@@ -235,30 +282,44 @@
 
     <img src="https://burakgtx.neocities.org/image/seno.png" class="top-gif" alt="Security Header">
 
-    <div id="ui-auth-tabs" class="hidden">
+    <!-- Ana Giriş/Kayıt Ekranı -->
+    <div id="ui-auth-tabs">
         <div class="tabs">
             <button class="tab-btn active" id="tab-reg" onclick="switchAuth('reg')">Yeni Kayıt</button>
             <button class="tab-btn" id="tab-login" onclick="switchAuth('login')">Giriş Yap</button>
         </div>
         
+        <div class="lang-switch">
+            <button onclick="switchLang('tr')" id="lang-tr" class="lang-btn active">
+                <img src="https://flagcdn.com/w40/tr.png" alt="TR"> TR
+            </button>
+            <button onclick="switchLang('en')" id="lang-en" class="lang-btn">
+                <img src="https://flagcdn.com/w40/gb.png" alt="EN"> EN
+            </button>
+        </div>
+        
         <div id="panel-reg">
             <input type="email" id="reg-email" placeholder="E-posta Adresi" autocomplete="email">
+            <div id="reg-recaptcha" class="g-recaptcha"></div>
             <button onclick="initiateAuth()">Kayıt Bağlantısı Gönder</button>
         </div>
         
         <div id="panel-login" class="hidden">
             <input type="email" id="login-email" placeholder="E-posta" autocomplete="email">
             <input type="password" id="login-code" placeholder="Güvenlik Kodu" autocomplete="current-password">
+            <div id="login-recaptcha" class="g-recaptcha"></div>
             <button onclick="loginWithCode()">Sisteme Gir</button>
         </div>
     </div>
 
+    <!-- Email Doğrulama Bekleme -->
     <div id="ui-wait" class="hidden">
         <div id="timer-display" style="font-size: 50px; color: var(--error); font-weight: 900; margin: 15px 0;">02:00</div>
         <p style="font-size: 15px; line-height: 1.6;">Lütfen e-posta kutunuzu kontrol edin ve gelen bağlantıya tıklayın.</p>
         <button onclick="logout()" style="background:transparent; color:var(--error); border:2px solid var(--error);">İşlemi İptal Et</button>
     </div>
 
+    <!-- Hesap Kurulum -->
     <div id="ui-setup" class="hidden">
         <h3 style="margin: 0 0 10px 0; font-size: 22px;">Hesabını Özelleştir</h3>
         <p style="font-size: 14px; color: #94a3b8; margin-bottom: 20px;">Benzersiz bir kullanıcı adı ve avatar seçin.</p>
@@ -267,6 +328,7 @@
         <button onclick="goToCodeStep()">Kodu Al ve İlerle</button>
     </div>
 
+    <!-- Kod Gösterme -->
     <div id="ui-show-code" class="hidden">
         <h3 style="color: var(--success); margin: 0;">Güvenlik Anahtarın</h3>
         <p style="font-size: 13px; color: #94a3b8; margin: 10px 0;">Bu kodu bir yere not edin, giriş için gereklidir.</p>
@@ -274,6 +336,7 @@
         <button id="btn-finish-setup" disabled>Kodu Kopyala (10s)</button>
     </div>
 
+    <!-- Normal Ana Menü -->
     <div id="ui-main" class="hidden">
         <div style="position: relative; display: inline-block;">
             <img id="main-avatar" src="" style="width:120px; height:120px; border-radius:50%; border:4px solid var(--primary); padding: 5px; background: #0b1120;">
@@ -288,6 +351,27 @@
         </div>
         
         <button onclick="logout()" style="background: var(--error); color:white; margin-top:30px;">Güvenli Çıkış Yap</button>
+
+        <div class="footer-main">
+            <p>© 2026 Originals</p>
+            <p>burakgtx.neocities.org & burakgtx.github.io</p>
+        </div>
+    </div>
+
+    <!-- ROLLBACK / HESAP SİLİNDİ EKRANI -->
+    <div id="ui-rollback" class="hidden">
+        <div class="rollback-box">
+            <h3 style="color: #f43f5e; margin: 0 0 15px 0;">⚠️ Sistem Uyarısı</h3>
+            <p style="font-size: 15.5px; line-height: 1.7; color: #fda4af;">
+                Sunucular rollback atıldı veya hesabınız sistemden düştü.
+            </p>
+            <p style="font-size: 14px; color: #94a3b8; margin-top: 15px;">
+                Devam etmek için "Yenile" butonuna basın.
+            </p>
+        </div>
+        <button onclick="handleRollbackContinue()" style="background: var(--primary); margin-top: 10px;">
+            Devam Et ve Yenile
+        </button>
     </div>
 
     <div id="status-box"></div>
