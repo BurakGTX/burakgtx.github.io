@@ -76,15 +76,8 @@
             margin-top: 15px; 
         }
 
-        .google-btn { 
-            background: white; 
-            color: #000; 
-        }
-
-        .official-btn { 
-            background: var(--accent); 
-            color: #000; 
-        }
+        .google-btn { background: white; color: #000; }
+        .official-btn { background: var(--accent); color: #000; }
 
         .google-btn:hover:not(:disabled), 
         .official-btn:hover:not(:disabled) { 
@@ -92,224 +85,9 @@
             box-shadow: 0 10px 30px var(--accent-glow); 
         }
 
-        .google-btn:disabled { 
-            opacity: 0.5; 
-            cursor: not-allowed; 
-        }
+        .google-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .g-recaptcha { 
-            margin: 30px 0; 
-            display: flex; 
-            justify-content: center; 
-        }
-
-        #loading-screen { 
-            position: fixed; 
-            inset: 0; 
-            background: var(--bg-dark); 
-            display: none; 
-            flex-direction: column; 
-            justify-content: center; 
-            align-items: center; 
-            z-index: 100001; 
-        }
-
-        .viewport-wrapper { 
-            display: flex; 
-            width: 200vw; 
-            height: 100vh; 
-            transition: transform 0.8s cubic-bezier(0.85, 0, 0.15, 1); 
-        }
-
-        .show-editor { 
-            transform: translateX(-100vw); 
-        }
-
-        .menu-view { 
-            width: 100vw; 
-            height: 100vh; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            background: #07090e; 
-        }
-
-        .main-card { 
-            width: 420px; 
-            background: #0d1117; 
-            border-radius: 45px; 
-            padding: 40px; 
-            border: 1px solid var(--border); 
-            display: flex; 
-            flex-direction: column; 
-            box-shadow: 0 40px 100px rgba(0,0,0,0.6); 
-        }
-
-        .user-profile-header { 
-            display: flex; 
-            align-items: center; 
-            gap: 15px; 
-            margin-bottom: 35px; 
-        }
-
-        .user-profile-header img { 
-            width: 65px; 
-            height: 65px; 
-            border-radius: 50%; 
-            border: 3px solid var(--accent); 
-            padding: 3px; 
-        }
-
-        .storage-box { 
-            background: rgba(255,255,255,0.03); 
-            border-radius: 25px; 
-            padding: 20px; 
-            border: 1px solid var(--border); 
-            margin-bottom: 30px; 
-        }
-
-        .storage-bar-bg { 
-            height: 8px; 
-            background: #1c2128; 
-            border-radius: 10px; 
-            overflow: hidden; 
-            margin-top: 12px; 
-        }
-
-        .storage-bar-fill { 
-            height: 100%; 
-            width: 0%; 
-            background: var(--accent); 
-            box-shadow: 0 0 15px var(--accent-glow); 
-            transition: 1s cubic-bezier(0.2, 1, 0.2, 1); 
-        }
-
-        .project-list { 
-            flex-grow: 1; 
-            max-height: 320px; 
-            overflow-y: auto; 
-            margin-bottom: 25px; 
-        }
-
-        .project-card { 
-            background: rgba(255,255,255,0.02); 
-            border-radius: 20px; 
-            padding: 18px; 
-            margin-bottom: 12px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            cursor: pointer; 
-            transition: 0.3s; 
-            border: 1px solid transparent; 
-        }
-
-        .project-card:hover { 
-            background: rgba(56, 189, 248, 0.05); 
-            border-color: var(--accent); 
-        }
-
-        .btn-action { 
-            width: 100%; 
-            padding: 18px; 
-            border-radius: 18px; 
-            border: none; 
-            font-weight: 800; 
-            font-size: 14px; 
-            cursor: pointer; 
-            transition: 0.3s; 
-            text-transform: uppercase; 
-        }
-
-        .btn-blue { 
-            background: var(--accent); 
-            color: #000; 
-        }
-
-        .btn-blue:hover { 
-            filter: brightness(1.1); 
-            box-shadow: 0 5px 20px var(--accent-glow); 
-        }
-
-        .editor-view { 
-            width: 100vw; 
-            height: 100vh; 
-            padding: 20px; 
-            display: flex; 
-            gap: 20px; 
-        }
-
-        .editor-container { 
-            flex: 0.85; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 15px; 
-        }
-
-        #editor { 
-            flex-grow: 1; 
-            border-radius: 25px; 
-            border: 1px solid var(--border); 
-            background: #000; 
-            overflow: hidden; 
-            font-size: 16px; 
-        }
-
-        .preview-container { 
-            flex: 1.15; 
-            background: #fff; 
-            border-radius: 25px; 
-            overflow: hidden; 
-            border: 1px solid var(--border); 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
-        }
-
-        #goster { 
-            width: 100%; 
-            height: 100%; 
-            border: none; 
-        }
-
-        .editor-controls { 
-            display: flex; 
-            gap: 10px; 
-        }
-
-        .modal-overlay { 
-            display: none; 
-            position: fixed; 
-            inset: 0; 
-            background: rgba(0,0,0,0.9); 
-            z-index: 200000; 
-            justify-content: center; 
-            align-items: center; 
-            backdrop-filter: blur(10px); 
-        }
-
-        .modal-body { 
-            background: #161b22; 
-            padding: 40px; 
-            border-radius: 35px; 
-            width: 400px; 
-            text-align: center; 
-            border: 1px solid var(--border); 
-        }
-
-        .modal-body input { 
-            width: 100%; 
-            padding: 18px; 
-            margin: 20px 0; 
-            background: #07090e; 
-            border: 1px solid var(--border); 
-            color: white; 
-            border-radius: 15px; 
-            text-align: center; 
-            font-size: 16px; 
-            outline: none; 
-        }
-
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 10px; }
+        .g-recaptcha { margin: 30px 0; display: flex; justify-content: center; }
     </style>
 </head>
 <body>
@@ -326,8 +104,7 @@
             Google ile Giriş Yap
         </button>
         
-        <!-- RESMİ GİRİŞ BUTONU EKLENDİ -->
-        <button class="official-btn" id="official-login" style="margin-top: 10px;">
+        <button class="official-btn" id="official-login">
             🔐 Resmi Giriş Yap (kayit.html)
         </button>
     </div>
@@ -434,7 +211,7 @@ let usedSpaceTotal = 0;
 // --- NAVIGATION ---
 const viewport = document.getElementById('master-view');
 
-// --- RESMİ GİRİŞ (Popup) ---
+// --- RESMİ GİRİŞ (Popup + Otomatik Giriş) ---
 document.getElementById('official-login').onclick = () => {
     const popup = window.open(
         "https://burakgtx.github.io/kayit.html",
@@ -442,12 +219,15 @@ document.getElementById('official-login').onclick = () => {
         "width=520,height=740,scrollbars=no,resizable=no,menubar=no,location=no"
     );
 
-    const checkPopup = setInterval(() => {
+    const checkClosed = setInterval(() => {
         if (popup.closed) {
-            clearInterval(checkPopup);
-            location.reload(); // Popup kapandığında ana sayfayı yenile (giriş kontrolü için)
+            clearInterval(checkClosed);
+            // Popup kapandıktan sonra Auth durumunu yenile
+            setTimeout(() => {
+                location.reload();
+            }, 800);
         }
-    }, 800);
+    }, 700);
 };
 
 // --- GOOGLE LOGIN ---
@@ -457,14 +237,15 @@ document.getElementById('google-login').onclick = () => auth.signInWithPopup(goo
 
 document.getElementById('logout-trigger').onclick = () => auth.signOut().then(() => location.reload());
 
+// --- AUTH DURUM KONTROLÜ (Giriş sonrası otomatik algılama) ---
 auth.onAuthStateChanged(user => {
-    if(user) {
+    if (user) {
         activeUser = user;
         document.getElementById('login-screen').style.opacity = '0';
         setTimeout(() => {
             document.getElementById('login-screen').style.display = 'none';
             initBoot(user);
-        }, 800);
+        }, 600);
     }
 });
 
@@ -472,31 +253,33 @@ function initBoot(user) {
     const boot = document.getElementById('loading-screen');
     const bar = document.getElementById('boot-progress');
     boot.style.display = 'flex';
+    
     document.getElementById('boot-profile').innerHTML = ` 
         <div style="text-align:center"> 
-            <img src="${user.photoURL}" style="width:80px; border-radius:50%; border:2px solid var(--accent); padding:4px;"> 
-            <h2 style="margin-top:15px; font-weight:800; font-size:16px; letter-spacing:1px;">${user.displayName.toUpperCase()}</h2> 
+            <img src="${user.photoURL || 'https://via.placeholder.com/80'}" style="width:80px; border-radius:50%; border:2px solid var(--accent); padding:4px;"> 
+            <h2 style="margin-top:15px; font-weight:800; font-size:16px; letter-spacing:1px;">${user.displayName ? user.displayName.toUpperCase() : user.email}</h2> 
         </div> 
     `;
+    
     let prg = 0;
     const intr = setInterval(() => {
-        prg += Math.random() * 15;
+        prg += Math.random() * 18;
         if(prg > 100) prg = 100;
         bar.style.width = prg + "%";
         if(prg >= 100) {
             clearInterval(intr);
             setTimeout(coreStart, 400);
         }
-    }, 80);
+    }, 70);
 }
 
 function coreStart() {
     document.getElementById('loading-screen').style.display = 'none';
     const userHtml = ` 
-        <img src="${activeUser.photoURL}" style="width:55px; border-radius:50%; border:2px solid var(--accent);"> 
+        <img src="${activeUser.photoURL || 'https://via.placeholder.com/55'}" style="width:55px; border-radius:50%; border:2px solid var(--accent);"> 
         <div> 
-            <div style="font-weight:800; font-size:15px;">${activeUser.displayName}</div> 
-            <div style="font-size:9px; color:var(--accent); font-weight:700;">ID: ${activeUser.uid.substring(0,7)}..</div> 
+            <div style="font-weight:800; font-size:15px;">${activeUser.displayName || activeUser.email}</div> 
+            <div style="font-size:9px; color:var(--accent); font-weight:700;">ID: ${activeUser.uid.substring(0,8)}..</div> 
         </div> 
     `;
     document.getElementById('user-display').innerHTML = userHtml;
@@ -570,15 +353,13 @@ document.getElementById('save-current').onclick = async () => {
                 currentProjectName = name;
                 document.getElementById('active-project-name').innerText = name.toUpperCase();
                 triggerAlert("BAŞARILI", "Proje buluta kaydedildi.");
-            }).catch(err => triggerAlert("HATA", "Yetki reddedildi: " + err.message));
+            });
         }
     } else {
         db.ref('users/' + activeUser.uid + '/projects/' + currentProjectId).update({ 
             code: code, 
             at: firebase.database.ServerValue.TIMESTAMP 
-        }).then(() => {
-            triggerAlert("GÜNCELLENDİ", "Değişiklikler başarıyla senkronize edildi.");
-        }).catch(err => triggerAlert("HATA", "Güncelleme başarısız: " + err.message));
+        }).then(() => triggerAlert("GÜNCELLENDİ", "Değişiklikler senkronize edildi."));
     }
 };
 
@@ -594,7 +375,6 @@ window.killProject = async (id, e) => {
     }
 };
 
-// --- UI MODALS ---
 const modal = document.getElementById('global-modal');
 const mInput = document.getElementById('m-input');
 let modalResolver = null;
@@ -615,7 +395,6 @@ function triggerAlert(title, text) {
     document.getElementById('modal-text').innerText = text;
     document.getElementById('modal-input-field').style.display = 'none';
     modal.style.display = 'flex';
-    modalResolver = null;
 }
 
 document.getElementById('m-yes').onclick = () => {
@@ -637,9 +416,7 @@ editor.session.on('change', () => {
 
 window.addEventListener('resize', () => editor.resize());
 
-console.log(" v4.7 Initialized Successfully.");
-console.log("Cloud enforced: 2MB per user.");
-console.log("Auth Provider: Google + Resmi Giriş.");
+console.log(" v4.8 - Resmi Giriş + Otomatik Giriş Entegre Edildi.");
 </script>
 </body>
 </html>
