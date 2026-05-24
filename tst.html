@@ -85,8 +85,6 @@
             box-shadow: 0 10px 30px var(--accent-glow); 
         }
 
-        .google-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
         .g-recaptcha { margin: 30px 0; display: flex; justify-content: center; }
     </style>
 </head>
@@ -211,7 +209,7 @@ let usedSpaceTotal = 0;
 // --- NAVIGATION ---
 const viewport = document.getElementById('master-view');
 
-// --- RESMİ GİRİŞ (Popup + Otomatik Giriş) ---
+// --- RESMİ GİRİŞ (Popup + Güçlendirilmiş Kontrol) ---
 document.getElementById('official-login').onclick = () => {
     const popup = window.open(
         "https://burakgtx.github.io/kayit.html",
@@ -222,10 +220,10 @@ document.getElementById('official-login').onclick = () => {
     const checkClosed = setInterval(() => {
         if (popup.closed) {
             clearInterval(checkClosed);
-            // Popup kapandıktan sonra Auth durumunu yenile
+            // Çift kontrol: Popup kapandıktan sonra Auth durumunu zorla yenile
             setTimeout(() => {
-                location.reload();
-            }, 800);
+                auth.currentUser ? location.reload() : console.log("Giriş algılanmadı, tekrar deneyin.");
+            }, 1200);
         }
     }, 700);
 };
@@ -237,8 +235,8 @@ document.getElementById('google-login').onclick = () => auth.signInWithPopup(goo
 
 document.getElementById('logout-trigger').onclick = () => auth.signOut().then(() => location.reload());
 
-// --- AUTH DURUM KONTROLÜ (Giriş sonrası otomatik algılama) ---
-auth.onAuthStateChanged(user => {
+// --- AUTH DURUM KONTROLÜ (GÜÇLENDİRİLDİ) ---
+auth.onAuthStateChanged(async (user) => {
     if (user) {
         activeUser = user;
         document.getElementById('login-screen').style.opacity = '0';
@@ -246,6 +244,9 @@ auth.onAuthStateChanged(user => {
             document.getElementById('login-screen').style.display = 'none';
             initBoot(user);
         }, 600);
+    } else {
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('login-screen').style.opacity = '1';
     }
 });
 
@@ -416,7 +417,7 @@ editor.session.on('change', () => {
 
 window.addEventListener('resize', () => editor.resize());
 
-console.log(" v4.8 - Resmi Giriş + Otomatik Giriş Entegre Edildi.");
+console.log(" v4.9 - Resmi Giriş + Otomatik Algılama Güçlendirildi.");
 </script>
 </body>
 </html>
