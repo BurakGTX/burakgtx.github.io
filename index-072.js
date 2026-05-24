@@ -1,4 +1,4 @@
-if (window.location.href !== "http://127.0.0.1:5500/kayit.html") {
+if (window.location.href !== "https://burakgtx.github.io/kayit.html") {
     document.documentElement.innerHTML = "";
     window.stop();
     throw new Error("x");
