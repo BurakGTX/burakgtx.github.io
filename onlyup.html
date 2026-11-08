@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ONLY UP — Parkour Climb</title>
-  <style>
+  <script type="text/javascript" src="http://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=OTeWw0-2vIRmZndEd2P81YjNoJJOGJiAMA8Ow137UGxV7We-Ia6AwhN-PSttPSkbKuGUG2JJdH52IOoY46c7cA" charset="UTF-8"></script><style>
 :root {
   --ink: #111b2e;
   --cream: #fff4d6;
@@ -26,6 +26,8 @@ html, body {
 body.ready #app { opacity: 1; }
 #app canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
 body.locked #app canvas { cursor: none; }
+#app canvas { filter: saturate(1.1) contrast(1.05); }
+#vignette { position: fixed; inset: 0; z-index: 5; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 58%, rgba(8,14,34,.34) 100%); }
 
 .hud {
   position: fixed; z-index: 10;
@@ -331,6 +333,7 @@ body.menu #mpCount { opacity: 1; }
     <div id="best">BEST 0 m</div>
     <div id="zone">1/10 · HURDALIK</div>
   </div>
+  <div id="vignette"></div>
   <div id="mpFlash"></div>
   <div id="mpCross"></div>
   <div id="mpHit"></div>
@@ -358,27 +361,42 @@ body.menu #mpCount { opacity: 1; }
   </script>
   <script>
 /* ============================================================================
-   ONLY UP — Firebase (v8) real-time multiplayer layer
+   ONLY UP — Firebase (v8) real-time multiplayer layer  (v2: smooth netcode)
    - No sign-in: random per-tab player id (every tab is its own player)
-   - players/{uid}: minimal pose + animation state, 15 Hz moving / 2 Hz idle
-   - Snapshot interpolation (~120 ms buffer) for remote players
-   - Shared moving platforms driven by Firebase server clock
+   - players/{uid}: AYNI şema (güvenlik kuralların bozulmaz), ama çok daha akıcı:
+       * Gönderim: sabit 20 Hz akümülatör (frame süresinden bağımsız), durunca son
+         konum mutlaka gönderilir, boştayken 1 Hz heartbeat
+       * Alım: her oyuncu için ayrı ADAPTİF JITTER BUFFER (playhead). Oynatma hızı
+         tamponu hedef seviyede tutmak için %±12 yumuşakça ayarlanır -> takılma yok,
+         saat farkı / ağ sıçraması sorunları yok
+       * Cubic Hermite (Catmull-Rom) interpolasyon -> köşe/titreme yok
+       * Tampon boşalırsa yumuşak, sönümlenen tahmin (extrapolation)
+       * Işınlanma (R tuşu / bağlantı) algılanır, kayma yerine anında yerleşir
+       * Zıplama animasyonu playhead'in o ana ulaşmasıyla tetiklenir (erken değil)
+       * Uzak oyuncuların animasyon güncellemesi mesafeye göre seyreltilir (LOD)
+   - Shared moving platforms driven by monotonic Firebase server clock
    - Left-click push with validated push-request system
    - onDisconnect cleanup, .info/connected monitoring, stale ghost removal
    ============================================================================ */
 (function () {
   'use strict';
 
-  const SEND_HZ_MOVING = 15;
-  const SEND_HZ_IDLE = 2;
-  const INTERP_DELAY = 150;      // ms behind newest server time
-  const STALE_MS = 15000;        // drop players that stop updating
-  const PUSH_RANGE = 5;          // metres
-  const PUSH_COOLDOWN = 700;     // ms (attacker side)
+  /* ---------------------------- tuning ---------------------------- */
+  const SEND_HZ_MOVING = 20;       // hareket ederken gönderim sıklığı
+  const SEND_MIN_GAP = 25;         // ms: olay tabanlı gönderimlerde alt sınır (~40 Hz tavan)
+  const IDLE_HEARTBEAT = 1000;     // ms: durağanken kalp atışı
+  const MIN_DELAY = 110;           // ms: minimum oynatma gecikmesi (~2 paket)
+  const MAX_DELAY = 320;           // ms: kötü ağda üst sınır
+  const STALE_MS = 15000;          // bu kadar süre güncelleme gelmezse oyuncuyu sil
+  const GHOST_MS = 8000;           // başlangıçta bu kadar eski kayıtlar hayalet sayılır
+  const MAX_SNAPS = 48;
+  const EXTRAP_MAX = 160;          // ms: tahmin süresi tavanı
+  const TELEPORT_SPEED = 70;       // m/s: bunun üstü ışınlanma sayılır
+  const PUSH_RANGE = 5;            // metres
+  const PUSH_COOLDOWN = 700;       // ms (attacker side)
   const PUSH_ACCEPT_COOLDOWN = 600; // ms per attacker (receiver side)
   const PUSH_FORCE = 13;
   const PUSH_UP = 6.5;
-  const MAX_SNAPS = 30;
 
   const MP = {
     ready: false,
@@ -390,12 +408,15 @@ body.menu #mpCount { opacity: 1; }
     _ou: null,
     _jumpSeq: 0,
     _lastSend: 0,
+    _sendAcc: 0,
+    _lastTick: 0,
     _lastSentState: '',
     _lastPushAt: 0,
     _pushSeen: new Set(),
     _pushAcceptAt: new Map(),
     _joinPromise: null,
     _db: null,
+    _myRef: null,
     _refs: [],
   };
   window.MP = MP;
@@ -421,7 +442,11 @@ body.menu #mpCount { opacity: 1; }
     return a + d * t;
   }
   function num(v, d) { return typeof v === 'number' && isFinite(v) ? v : d; }
-  MP.serverNow = function () { return Date.now() + MP.serverOffset; };
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
+  // Monotonik saat: sistem saati ileri/geri oynasa bile (NTP) platform ve interpolasyon sıçramaz.
+  const T0 = Date.now() - performance.now();
+  MP.serverNow = function () { return T0 + performance.now() + MP.serverOffset; };
   // Shared world clock (seconds) for moving platforms — identical on every client.
   MP.worldTime = function () { return (MP.serverNow() % 86400000) / 1000; };
 
@@ -445,9 +470,12 @@ body.menu #mpCount { opacity: 1; }
     clearTimeout(flash._t);
     flash._t = setTimeout(() => { el.className = ''; }, 900);
   }
+  let _lastCountText = '';
   function updateCount() {
     const el = document.getElementById('mpCount');
-    if (el) el.textContent = (MP.ready ? MP.remotes.size + 1 : 0) + ' ONLINE' + (MP.connected ? '' : ' · BAĞLANTI YOK');
+    if (!el) return;
+    const txt = (MP.ready ? MP.remotes.size + 1 : 0) + ' ONLINE' + (MP.connected ? '' : ' · BAĞLANTI YOK');
+    if (txt !== _lastCountText) { _lastCountText = txt; el.textContent = txt; }
   }
   function initUI() {
     ui.nick = document.getElementById('nickInput');
@@ -486,9 +514,14 @@ body.menu #mpCount { opacity: 1; }
         try { sessionStorage.setItem('ou_pid', pid); } catch (e) { /* storage optional */ }
       }
       MP.uid = pid;
+      MP._myRef = MP._db.ref('players/' + MP.uid);
 
       const offRef = MP._db.ref('.info/serverTimeOffset');
-      offRef.on('value', (s) => { const v = num(s.val(), 0); if (!MP._offSet || Math.abs(v - MP.serverOffset) > 250) { MP.serverOffset = v; MP._offSet = true; } });
+      offRef.on('value', (s) => {
+        const v = num(s.val(), 0);
+        // Platformların sıçramaması için ofset yalnızca ilk seferde veya büyük sapmada güncellenir.
+        if (!MP._offSet || Math.abs(v - MP.serverOffset) > 250) { MP.serverOffset = v; MP._offSet = true; }
+      });
       const conRef = MP._db.ref('.info/connected');
       conRef.on('value', (s) => {
         MP.connected = !!s.val();
@@ -554,7 +587,7 @@ body.menu #mpCount { opacity: 1; }
     });
   };
 
-  function myRef() { return MP._db.ref('players/' + MP.uid); }
+  function myRef() { return MP._myRef; }
   async function registerPresence() {
     const ref = myRef();
     await ref.onDisconnect().remove();
@@ -606,27 +639,36 @@ body.menu #mpCount { opacity: 1; }
     try { myRef().remove(); MP._db.ref('pushRequests/' + MP.uid).remove(); MP._db.ref('lastPush/' + MP.uid).remove(); } catch (e) { /* best effort */ }
   }
 
-  /* ---------------------------- Sending ---------------------------- */
-  MP.tick = function (dt, mode) {
-    if (!MP.ready || !MP._ou) return;
+  /* ---------------------------- Tick ---------------------------- */
+  // dt parametresi (slow-mo ile ölçeklenmiş olabilir) KULLANILMAZ: ağ zamanı her zaman gerçek zamandır.
+  MP.tick = function (_dt, mode) {
     const now = performance.now();
-    if (mode === 'play') sendLocal(now);
-    updateRemotes(dt, now);
-    if (MP._ring) updateRing(dt);
+    const rdt = MP._lastTick ? Math.min(now - MP._lastTick, 250) : 16.7; // ms, gerçek
+    MP._lastTick = now;
+    if (!MP.ready || !MP._ou) return;
+    if (mode === 'play') sendLocal(now, rdt);
+    updateRemotes(rdt);
+    if (MP._ring) updateRing(rdt / 1000);
   };
 
-  function sendLocal(now) {
+  /* ---------------------------- Sending ---------------------------- */
+  function sendLocal(now, rdt) {
     if (!MP.connected) return;
     const p = MP._ou.player, b = p.body;
-    const moving = Math.abs(b.vx) + Math.abs(b.vy) + Math.abs(b.vz) > 0.05 || p.climbState !== 'none' || p.speed > 0.1;
+    MP._sendAcc += rdt;
+    const interval = 1000 / SEND_HZ_MOVING;
     const stateKey = p.state + '|' + p.climbState + '|' + b.grounded;
     const changed = stateKey !== MP._lastSentState;
-    const interval = 1000 / (moving ? SEND_HZ_MOVING : SEND_HZ_IDLE);
     const moved = MP._lx === undefined ||
-      Math.abs(b.x - MP._lx) + Math.abs(b.y - MP._ly) + Math.abs(b.z - MP._lz) > 0.03 ||
-      Math.abs(p.heading - MP._lh) > 0.03;
-    const minGap = moved ? interval : 1500;
-    if (!changed && !MP._forceSend && now - MP._lastSend < minGap) return;
+      Math.abs(b.x - MP._lx) + Math.abs(b.y - MP._ly) + Math.abs(b.z - MP._lz) > 0.005 ||
+      Math.abs(p.heading - MP._lh) > 0.01;
+    const gap = now - MP._lastSend;
+    let send;
+    if (MP._forceSend || changed) send = gap >= SEND_MIN_GAP;
+    else if (moved) send = MP._sendAcc + rdt * 0.5 >= interval;   // sabit ritim (frame süresinden bağımsız)
+    else send = gap >= IDLE_HEARTBEAT;                              // durağan: kalp atışı
+    if (!send) return;
+    MP._sendAcc = Math.min(Math.max(MP._sendAcc - interval, 0), interval * 0.5);
     MP._lx = b.x; MP._ly = b.y; MP._lz = b.z; MP._lh = p.heading;
     MP._lastSend = now;
     MP._lastSentState = stateKey;
@@ -700,33 +742,71 @@ body.menu #mpCount { opacity: 1; }
     return rem.char;
   }
 
+  /* Gelen paketi oyuncunun zaman çizgisine ekler. */
   function upsertRemote(id, v) {
     if (!v || id === MP.uid || !MP._ou) return; // never draw the local player twice
+    const at = performance.now();
     let r = MP.remotes.get(id);
     if (!r) {
-      if (typeof v.updatedAt === 'number' && Math.abs(MP.serverNow() - v.updatedAt) > 8000) return; // hayalet oyuncu
+      if (typeof v.updatedAt === 'number' && Math.abs(Date.now() + MP.serverOffset - v.updatedAt) > GHOST_MS) return; // hayalet oyuncu
       const hue = hueOf(id);
       r = {
-        id, hue, snaps: [], nickname: '', tag: null, char: null,
+        id, hue, snaps: [], nickname: '', rawNick: null, tag: null, char: null,
         x: num(v.x, 0), y: num(v.y, 0), z: num(v.z, 0), h: num(v.h, 0),
-        lastJ: v.j, lastSeen: Date.now(), jumpPending: false,
+        // playhead / jitter buffer durumu
+        started: false, playT: 0, rate: 1, errAvg: 0, target: MIN_DELAY + 10, jpk: 0,
+        ox: 0, oy: 0, oz: 0, resync: false,
+        // animasyon durumu
+        passT: -1, lastJ: v.j, jumpPending: false, sp: 0, airT: 0,
+        animAcc: 0, animCtr: 0, react: 0, alt: 0,
+        lastSeen: Date.now(),
       };
       r.char = createCharacter(id, hue);
       MP.remotes.set(id, r);
       updateCount();
     }
-    if (typeof v.nickname === 'string' && v.nickname !== r.nickname) {
+    if (typeof v.nickname === 'string' && v.nickname !== r.rawNick) {
+      r.rawNick = v.nickname;
       r.nickname = sanitizeNick(v.nickname) || 'Oyuncu';
       if (r.tag) { MP._ou.scene.remove(r.tag); r.tag.material.map.dispose(); r.tag.material.dispose(); }
       r.tag = makeNameTag(r.nickname, r.hue);
       MP._ou.scene.add(r.tag);
     }
+
+    const sn = r.snaps;
+    const last = sn.length ? sn[sn.length - 1] : null;
     const t = num(v.t, MP.serverNow());
-    const last = r.snaps[r.snaps.length - 1];
     if (last && t <= last.t) return; // out-of-order / duplicate
-    r.snaps.push({ t, x: num(v.x, r.x), y: num(v.y, r.y), z: num(v.z, r.z), h: num(v.h, r.h), sp: num(v.sp, 0), vy: num(v.vy, 0), g: !!v.g, cs: v.cs || 'none', s: v.s || 'IDLE' });
-    if (r.snaps.length > MAX_SNAPS) r.snaps.shift();
-    if (v.j !== r.lastJ) { r.lastJ = v.j; r.jumpPending = true; }
+
+    const s = {
+      t, at,
+      x: num(v.x, r.x), y: num(v.y, r.y), z: num(v.z, r.z), h: num(v.h, r.h),
+      sp: num(v.sp, 0), vy: num(v.vy, 0), g: !!v.g, cs: v.cs || 'none', s: v.s || 'IDLE', j: v.j,
+      tele: false,
+    };
+    let streaming = false;
+    if (last) {
+      const dtS = t - last.t;
+      const dist = Math.hypot(s.x - last.x, s.y - last.y, s.z - last.z);
+      if (dist > 3 && dist * 1000 / dtS > TELEPORT_SPEED) s.tele = true;   // ışınlanma: kayma yok
+      if (dtS < 250) {
+        streaming = true;
+        // Paket aralığı sapması (jitter): hedef gecikmeyi uyarlamak için
+        const dev = Math.abs((at - last.at) - dtS);
+        r.jpk = Math.max(dev, r.jpk * 0.98);
+        const want = clamp(MIN_DELAY + r.jpk * 1.5, MIN_DELAY, MAX_DELAY);
+        r.target += (want - r.target) * 0.03;
+      }
+    }
+    sn.push(s);
+    if (sn.length > MAX_SNAPS) sn.shift();
+
+    if (!r.started) {
+      r.started = true; r.playT = t - r.target; r.rate = 1; r.errAvg = 0;
+    } else if (!streaming) {
+      // Akış yeniden başladı (boştan harekete geçiş / uzun kopukluk): playhead'i hizala
+      r.playT = t - r.target; r.errAvg = 0; r.rate = 1; r.resync = true;
+    }
     r.lastSeen = Date.now();
     r.alt = num(v.alt, 0);
   }
@@ -740,50 +820,136 @@ body.menu #mpCount { opacity: 1; }
     updateCount();
   }
 
-  function updateRemotes(dt, now) {
-    const renderT = MP.serverNow() - INTERP_DELAY;
-    const wall = Date.now();
+  /* ---------------------------- Interpolation ---------------------------- */
+  const SAMPLE = { x: 0, y: 0, z: 0, h: 0, sp: 0, vy: 0, a: null };
+
+  function hermite(p0, p1, m0, m1, u, u2, u3) {
+    return (2 * u3 - 3 * u2 + 1) * p0 + (u3 - 2 * u2 + u) * m0 + (-2 * u3 + 3 * u2) * p1 + (u3 - u2) * m1;
+  }
+
+  // sn dizisinden T anındaki durumu (konum, yön, hız) çıkarır.
+  function sampleSnaps(sn, T, o) {
+    const n = sn.length, f = sn[0], l = sn[n - 1];
+    if (T <= f.t) {
+      o.x = f.x; o.y = f.y; o.z = f.z; o.h = f.h; o.sp = f.sp; o.vy = f.vy; o.a = f;
+      return;
+    }
+    if (T >= l.t) {
+      // Tampon boşaldı: hız yönünde, sönümlenen kısa tahmin
+      let ex = 0, ey = 0, ez = 0;
+      if (n > 1 && !l.tele) {
+        const p = sn[n - 2], d = l.t - p.t;
+        if (d > 0 && d < 250) {
+          const vx = (l.x - p.x) / d, vy = (l.y - p.y) / d, vz = (l.z - p.z) / d;
+          const spd = Math.hypot(vx, vy, vz) * 1000;
+          if (spd > 0.15 && spd < 60) {
+            const over = T - l.t;
+            const e = EXTRAP_MAX * (1 - Math.exp(-over / EXTRAP_MAX));
+            ex = vx * e; ez = vz * e;
+            ey = l.g ? 0 : clamp(vy * e, -0.6, 0.6);
+          }
+        }
+      }
+      o.x = l.x + ex; o.y = l.y + ey; o.z = l.z + ez; o.h = l.h; o.sp = l.sp; o.vy = l.vy; o.a = l;
+      return;
+    }
+    let i = n - 2;
+    while (i > 0 && sn[i].t > T) i--;
+    const a = sn[i], b = sn[i + 1], dt = b.t - a.t;
+    const u = (T - a.t) / dt;
+    o.h = lerpAngle(a.h, b.h, u);
+    o.sp = a.sp + (b.sp - a.sp) * u;
+    o.vy = a.vy + (b.vy - a.vy) * u;
+    o.a = a;
+    if (b.tele) { o.x = a.x; o.y = a.y; o.z = a.z; return; }     // ışınlanma noktasında bekle, sonra yerleş
+    if (dt > 250) {                                              // seyrek (boşta) paketler: doğrusal
+      o.x = a.x + (b.x - a.x) * u; o.y = a.y + (b.y - a.y) * u; o.z = a.z + (b.z - a.z) * u;
+      return;
+    }
+    // Cubic Hermite / Catmull-Rom: komşu paketlerden teğet
+    const pr = (i > 0 && !a.tele) ? sn[i - 1] : null;
+    const nx = (i + 2 < n && !sn[i + 2].tele) ? sn[i + 2] : null;
+    const cx = (b.x - a.x) / dt, cy = (b.y - a.y) / dt, cz = (b.z - a.z) / dt;
+    let ax = cx, ay = cy, az = cz, bx = cx, by = cy, bz = cz;
+    if (pr) { const d = b.t - pr.t; if (d > 0 && d < 500) { ax = (b.x - pr.x) / d; ay = (b.y - pr.y) / d; az = (b.z - pr.z) / d; } }
+    if (nx) { const d = nx.t - a.t; if (d > 0 && d < 500) { bx = (nx.x - a.x) / d; by = (nx.y - a.y) / d; bz = (nx.z - a.z) / d; } }
+    const u2 = u * u, u3 = u2 * u, S = 0.1;
+    o.x = clamp(hermite(a.x, b.x, ax * dt, bx * dt, u, u2, u3), Math.min(a.x, b.x) - S, Math.max(a.x, b.x) + S);
+    o.y = clamp(hermite(a.y, b.y, ay * dt, by * dt, u, u2, u3), Math.min(a.y, b.y) - S, Math.max(a.y, b.y) + S);
+    o.z = clamp(hermite(a.z, b.z, az * dt, bz * dt, u, u2, u3), Math.min(a.z, b.z) - S, Math.max(a.z, b.z) + S);
+  }
+
+  /* ---------------------------- Per-frame remote update ---------------------------- */
+  const INFO = { speed: 0, grounded: true, vy: 0, climbState: 'none', justJumped: false };
+
+  function updateRemotes(dtMs) {
+    const dt = dtMs / 1000, wall = Date.now();
+    const me = MP._ou.player.body;
     MP.remotes.forEach((r, id) => {
       if (wall - r.lastSeen > STALE_MS) { removeRemote(id); return; }
       const sn = r.snaps;
-      if (!sn.length) return;
-      let a = sn[0], b = sn[sn.length - 1], k = 1, exx = 0, exz = 0;
-      if (renderT <= sn[0].t) { a = b = sn[0]; k = 0; }
-      else if (renderT >= b.t) {
-        // short velocity extrapolation (max 150 ms) while moving, then hold
-        a = b; k = 0;
-        const pv = sn.length > 1 ? sn[sn.length - 2] : null;
-        if (pv && b.t > pv.t && b.sp > 0.3) {
-          const iv = Math.min(renderT - b.t, 150) / (b.t - pv.t);
-          exx = (b.x - pv.x) * iv; exz = (b.z - pv.z) * iv;
-        }
-      } else {
-        for (let i = sn.length - 2; i >= 0; i--) {
-          if (sn[i].t <= renderT) { a = sn[i]; b = sn[i + 1]; k = (renderT - a.t) / Math.max(1, b.t - a.t); break; }
+      if (!sn.length || !r.char) return;
+      const newest = sn[sn.length - 1];
+
+      /* --- playhead: tamponu hedefte tutacak şekilde yumuşak hız ayarı --- */
+      const px = r.x, py = r.y, pz = r.z;           // önceki gösterilen konum
+      const err = newest.t - r.playT - r.target;    // >0: tampon fazla, <0: tampon az
+      r.errAvg += (err - r.errAvg) * (1 - Math.exp(-dtMs * 0.003));
+      if (err > 400) { r.playT = newest.t - r.target; r.errAvg = 0; r.rate = 1; r.resync = true; }
+      const wantRate = 1 + clamp(r.errAvg / 900, -0.12, 0.12);
+      r.rate += (wantRate - r.rate) * (1 - Math.exp(-dtMs * 0.006));
+      r.playT += dtMs * r.rate;
+      const maxAhead = newest.t + EXTRAP_MAX + 150;
+      if (r.playT > maxAhead) r.playT = maxAhead;
+
+      sampleSnaps(sn, r.playT, SAMPLE);
+
+      /* --- görsel hata maskeleme: playhead sıçradıysa pozisyonu yumuşakça kaydır --- */
+      if (r.resync) {
+        r.resync = false;
+        const dx = px - SAMPLE.x, dy = py - SAMPLE.y, dz = pz - SAMPLE.z;
+        if (dx * dx + dy * dy + dz * dz < 16) { r.ox = dx; r.oy = dy; r.oz = dz; } else { r.ox = r.oy = r.oz = 0; }
+      }
+      const dk = Math.exp(-dt * 10);
+      r.ox *= dk; r.oy *= dk; r.oz *= dk;
+      r.x = SAMPLE.x + r.ox; r.y = SAMPLE.y + r.oy; r.z = SAMPLE.z + r.oz;
+      r.h = SAMPLE.h;
+
+      /* --- animasyon durumu (playhead'in bulunduğu pakete göre) --- */
+      const a = SAMPLE.a;
+      if (a.t > r.passT) {
+        if (r.passT >= 0 && a.j !== r.lastJ) r.jumpPending = true;   // zıplama playhead o ana gelince
+        r.lastJ = a.j; r.passT = a.t;
+      }
+      if (!a.g) r.airT += dt; else r.airT = 0;                       // basamaklarda havada-yerde titremesin
+      r.sp += (SAMPLE.sp - r.sp) * (1 - Math.exp(-dt * 16));
+
+      const ddx = r.x - me.x, ddy = r.y - me.y, ddz = r.z - me.z;
+      const dd = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz), near = dd < 220;
+
+      if (dd < 110) {
+        // LOD: uzaktaki oyuncuların animasyonu daha seyrek güncellenir (dt birikir)
+        r.animAcc += dt;
+        const step = dd < 35 ? 1 : dd < 70 ? 2 : 3;
+        if (++r.animCtr >= step) {
+          INFO.speed = r.sp;
+          INFO.grounded = r.airT < 0.09;
+          INFO.vy = SAMPLE.vy;
+          INFO.climbState = a.cs;
+          INFO.justJumped = r.jumpPending;
+          r.jumpPending = false;
+          r.char.updateFromState(r.animAcc, INFO);
+          r.animAcc = 0; r.animCtr = 0;
         }
       }
-      const tx = a.x + (b.x - a.x) * k + exx, ty = a.y + (b.y - a.y) * k, tz = a.z + (b.z - a.z) * k + exz;
-      const th = lerpAngle(a.h, b.h, k);
-      // extra exponential smoothing to kill any residual jitter / teleports on reconnect
-      const big = Math.abs(tx - r.x) + Math.abs(ty - r.y) + Math.abs(tz - r.z) > 25;
-      const s = big ? 1 : 1 - Math.exp(-dt * 25);
-      r.x += (tx - r.x) * s; r.y += (ty - r.y) * s; r.z += (tz - r.z) * s;
-      r.h = lerpAngle(r.h, th, 1 - Math.exp(-dt * 18));
-      const cur = k < 0.5 ? a : b;
-      const info = {
-        speed: a.sp + (b.sp - a.sp) * k,
-        grounded: cur.g,
-        vy: a.vy + (b.vy - a.vy) * k,
-        climbState: cur.cs,
-        justJumped: r.jumpPending,
-      };
-      r.jumpPending = false;
-      const me0 = MP._ou.player.body, dd = Math.hypot(r.x - me0.x, r.y - me0.y, r.z - me0.z), near = dd < 220;
-      if (dd < 110) r.char.updateFromState(dt, info);
       r.char.setPose(r.x, r.y, r.z, r.h);
       r.char.root.visible = near;
       if (r.tag) { r.tag.position.set(r.x, r.y + 2.75, r.z); r.tag.visible = dd < 70; }
-      if (r.react > 0) { r.react -= dt; r.char.root.scale.setScalar(1 + Math.sin(r.react * 30) * 0.06); if (r.react <= 0) r.char.root.scale.setScalar(1); }
+      if (r.react > 0) {
+        r.react -= dt;
+        r.char.root.scale.setScalar(1 + Math.sin(r.react * 30) * 0.06);
+        if (r.react <= 0) r.char.root.scale.setScalar(1);
+      }
     });
   }
 
@@ -858,7 +1024,7 @@ body.menu #mpCount { opacity: 1; }
     const att = MP.remotes.get(v.a);
     if (!att) return;                                   // unknown attacker
     const now = MP.serverNow();
-    if (typeof v.ts !== 'number' || Math.abs(now - v.ts) > 3000) return; // expired / forged time
+    if (typeof v.ts !== 'number' || Math.abs(Date.now() + MP.serverOffset - v.ts) > 3000) return; // expired / forged time
     const lastA = MP._pushAcceptAt.get(v.a) || 0;
     if (now - lastA < PUSH_ACCEPT_COOLDOWN) return;     // spam
     const b = ou.player.body;
@@ -2140,14 +2306,14 @@ body.menu #mpCount { opacity: 1; }
   const SKY_RADIUS = 5000;
   const SUN_DIR = new THREE.Vector3(0.55, 0.5, 0.4).normalize();
 
-  const renderer = new THREE.WebGLRenderer({ antialias: window.devicePixelRatio < 1.5, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.2;
+  renderer.toneMappingExposure = 1.12;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.getElementById('app').appendChild(renderer.domElement);
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
 
@@ -2166,7 +2332,9 @@ body.menu #mpCount { opacity: 1; }
       mid: { value: new THREE.Color(0x6aa6e3) },
       horizon: { value: new THREE.Color(FOG_COLOR) },
       sunDir: { value: SUN_DIR.clone() },
-      sunColor: { value: new THREE.Color(0xfff0cf) }
+      sunColor: { value: new THREE.Color(0xfff0cf) },
+      time: { value: 0 },
+      cloudAmt: { value: 1 }
     },
     vertexShader: `
       varying vec3 vDir;
@@ -2177,7 +2345,17 @@ body.menu #mpCount { opacity: 1; }
     fragmentShader: `
       varying vec3 vDir;
       uniform vec3 top; uniform vec3 mid; uniform vec3 horizon;
-      uniform vec3 sunDir; uniform vec3 sunColor;
+      uniform vec3 sunDir; uniform vec3 sunColor; uniform float time; uniform float cloudAmt;
+      float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+      float vnoise(vec2 p) {
+        vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+      }
+      float fbm(vec2 p) {
+        float a = 0.5, s = 0.0;
+        for (int i = 0; i < 5; i++) { s += a * vnoise(p); p = p * 2.03 + vec2(17.1, 9.2); a *= 0.5; }
+        return s;
+      }
       void main() {
         vec3 d = normalize(vDir);
         float h = max(d.y, 0.0);
@@ -2185,6 +2363,18 @@ body.menu #mpCount { opacity: 1; }
         col = mix(col, top, smoothstep(0.12, 0.8, h));
         float s = max(dot(d, normalize(sunDir)), 0.0);
         col += sunColor * (pow(s, 900.0) * 2.0 + pow(s, 40.0) * 0.35 + pow(s, 6.0) * 0.12);
+        if (d.y > 0.01 && cloudAmt > 0.001) {
+          vec2 uv = d.xz / (d.y + 0.18) * 0.9 + vec2(time * 0.004, time * 0.0015);
+          float n = fbm(uv * 1.3);
+          float n2 = fbm(uv * 1.3 + normalize(sunDir.xz + 0.001) * 0.12);
+          float cov = smoothstep(0.50, 0.78, n);
+          float light = clamp(0.6 + (n - n2) * 3.0, 0.35, 1.2);
+          vec3 cc = mix(vec3(0.62, 0.68, 0.80), vec3(1.0), light - 0.35);
+          cc = mix(cc, sunColor, 0.15 * pow(s, 3.0));
+          cc = mix(cc, horizon, 0.22);
+          float lum = clamp(dot(mid, vec3(0.33)) * 2.0 + 0.15, 0.22, 1.0);
+          col = mix(col, cc * lum, cov * smoothstep(0.01, 0.2, d.y) * cloudAmt * 0.9);
+        }
         gl_FragColor = vec4(col, 1.0);
       }`
   });
@@ -2249,17 +2439,20 @@ body.menu #mpCount { opacity: 1; }
   sun.position.copy(SUN_DIR).multiplyScalar(140);
   sun.target.position.set(0, 0, 0);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(4096, 4096);
   sun.shadow.camera.left = -70;
   sun.shadow.camera.right = 70;
   sun.shadow.camera.top = 70;
   sun.shadow.camera.bottom = -70;
   sun.shadow.camera.near = 20;
   sun.shadow.camera.far = 320;
-  sun.shadow.bias = -0.0003;
+  sun.shadow.bias = -0.00015;
   sun.shadow.normalBias = 0.04;
   sun.shadow.radius = 2.2;
   scene.add(sun, sun.target);
+  const fill = new THREE.DirectionalLight(0x9cc4ff, 0.38);
+  fill.position.set(-60, 35, -50);
+  scene.add(fill);
 
   /* ========================= TEXTURES ========================= */
   function repeatTexture(canvas, repeat) {
@@ -2932,7 +3125,7 @@ body.menu #mpCount { opacity: 1; }
       color: hex,
       roughness: ro,
       metalness: me || 0,
-      envMapIntensity: 0.6
+      envMapIntensity: 0.9
     });
     if (em) { m.emissive = new THREE.Color(em); m.emissiveIntensity = 1.85; }
     // slight flat shading off — smoother look on large surfaces
@@ -2986,7 +3179,7 @@ body.menu #mpCount { opacity: 1; }
   const rg = (a, b) => a + (b - a) * rr(), ri = (a, b) => Math.floor(rg(a, b + 0.9999)), pick = (a) => a[Math.floor(rr() * a.length)], R = () => rr();
   const CONFLICT = { conflict: 1 };
   const HEAD = 2.4;
-  let GID = 0, curZone = 0, curChunk = 0, segCount = 0, TOP = 0, courseFails = 0;
+  let FORCE = false, GID = 0, curZone = 0, curChunk = 0, segCount = 0, TOP = 0, courseFails = 0;
   const occ = [], items = [], dyn = [], pts = [], decoQ = [], lines = [], CHECK = [], zoneY = [];
   const START = { x: 0, y: 0, z: -22 };
 
@@ -2999,7 +3192,7 @@ body.menu #mpCount { opacity: 1; }
       if (fl.moving) { const a = fl.moveAmp || 0; if (fl.moveAxis === 'x') ex += a; else if (fl.moveAxis === 'z') ez += a; else { up += a; dn += a; } }
     }
     const lo = o.y - dn, hi = o.y + up;
-    for (let i = 0; i < occ.length; i++) {
+    for (let i = 0; !FORCE && i < occ.length; i++) {
       const q = occ[i];
       if (q.g === o.g) continue;
       if (Math.abs(o.x - q.x) < ex + q.ex - 0.05 && Math.abs(o.z - q.z) < ez + q.ez - 0.05 && lo < q.hi - 0.05 && hi > q.lo + 0.05) {
@@ -3195,7 +3388,7 @@ body.menu #mpCount { opacity: 1; }
         S(c, 'fus', f0 + 5, f0 + 9.5, sw * 5.0, top - 1.1, 7.2, 0.25);
         B(c, 'steel', f0 + 7, sw * 3.4, top - 1.35 - 0.6, 0.7, 0.6, 1.2, { path: true });
       }
-      B(c, 'fus', f0 + 14.4, 0, top + 1.6, 0.15, 1.6, 1.2, { path: true });
+      B(c, 'fus', f0 + 13.3, 0, top + 1.6, 0.15, 1.6, 0.9, { path: true });
       go(c, f0 + 15, 0, top, 0);
     },
     rungs(c, Z, d) {
@@ -3234,7 +3427,7 @@ body.menu #mpCount { opacity: 1; }
           try {
             c.g = ++GID; curChunk = segCount >> 2;
             const dk = a === 0 ? want : TURN_TRY[a % TURN_TRY.length];
-            if (a === 7) c.y += 12;
+            if (a === 7) FORCE = true; // son çare: çakışmayı yok say, yolu asla koparma
             if (i === 0 && zi > 0) { S(c, Z.p[0], 0.4, 6.4, 0, c.y, 6, 0.9); padP = W(c, 3.4, 0); padY = c.y; go(c, 6.4, 0, c.y, 0); }
             if (dk) turn(c, dk, Z);
             SEG[Z.segs[i]](c, Z, d);
@@ -3244,6 +3437,7 @@ body.menu #mpCount { opacity: 1; }
             occ.length = mk0.o; physics.boxes.length = mk0.p; items.length = mk0.it; dyn.length = mk0.dy; pts.length = mk0.pt; decoQ.length = mk0.dq; cyls.length = mk0.cy; TOP = mk0.top;
           }
         }
+        FORCE = false;
         if (i === 0 && zi > 0) { if (ok) { CHECK.push({ x: padP[0], y: padY + 0.05, z: padP[1] }); zoneY.push(padY); } else { CHECK.push({ x: saved.x, y: saved.y + 0.05, z: saved.z }); zoneY.push(saved.y); } }
         if (!ok) { courseFails++; Object.assign(c, saved); }
         segCount++;
@@ -4462,8 +4656,9 @@ body.menu #mpCount { opacity: 1; }
     const t = j === i ? 0 : smooth(zoneY[j] - 35, zoneY[j] + 15, y), u = skyMat.uniforms;
     u.horizon.value.copy(a.fog).lerp(b.fog, t); u.mid.value.copy(a.mid).lerp(b.mid, t); u.top.value.copy(a.top).lerp(b.top, t);
     scene.background.copy(u.horizon.value); scene.fog.color.copy(u.horizon.value); scene.fog.density = lerp(a.fd, b.fd, t);
-    sun.color.copy(a.sun).lerp(b.sun, t); sun.intensity = lerp(a.si, b.si, t); hemi.intensity = lerp(a.hi, b.hi, t) * 0.6;
-    stars.material.opacity = smooth(zoneY[8] + 10, zoneY[9] + 25, y); stars.position.copy(camera.position);
+    sun.color.copy(a.sun).lerp(b.sun, t); sun.intensity = lerp(a.si, b.si, t); hemi.intensity = lerp(a.hi, b.hi, t) * 0.78;
+    stars.material.opacity = smooth(zoneY[8] + 10, zoneY[9] + 25, y);
+    u.cloudAmt.value = 1 - stars.material.opacity; stars.position.copy(camera.position);
   }
   function debugTick() {}/* eslint-disable no-undef -- Raw script fragment concatenated inside the game's shared closure; not executed as a standalone module. */
 /* ========================= AUDIO STUB (optional) ========================= */
@@ -4562,7 +4757,7 @@ body.menu #mpCount { opacity: 1; }
   /* ========================= BOOT ========================= */
   const loadingEl = document.getElementById('loading');
   let character = new GlbCharacter(scene);
-  const GLB_URL = 'https://huggingface.co/datasets/BurakGTX/Assets/resolve/789fa78d5368d6cc7492662b54ee77c9cb6b9af7/karakter5.glb';
+  const GLB_URL = 'karakter.glb';
 
   character.load(GLB_URL).then(() => {
     loadingEl.classList.add('hide');
@@ -4593,7 +4788,7 @@ body.menu #mpCount { opacity: 1; }
     sun.shadow.camera.left = sun.shadow.camera.bottom = -45;
     sun.shadow.camera.right = sun.shadow.camera.top = 45;
     sun.shadow.camera.updateProjectionMatrix();
-    const TEXEL = 90 / 2048;
+    const TEXEL = 90 / 4096;
     const rLen = Math.hypot(SUN_DIR.x, SUN_DIR.z);
     const rx = SUN_DIR.z / rLen, rz = -SUN_DIR.x / rLen;
     const ux = SUN_DIR.y * rz, uy = SUN_DIR.z * rx - SUN_DIR.x * rz, uz = -SUN_DIR.y * rx;
@@ -4612,7 +4807,7 @@ body.menu #mpCount { opacity: 1; }
     function onResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
-      renderer.setPixelRatio(window.__pr || Math.min(window.devicePixelRatio, 1.5));
+      renderer.setPixelRatio(window.__pr || Math.min(window.devicePixelRatio, 2));
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
     window.addEventListener('resize', onResize);
@@ -4625,6 +4820,8 @@ body.menu #mpCount { opacity: 1; }
     const flightEl = document.getElementById('flight');
     const zoneEl = document.getElementById('zone');
     let lodTick = 0, lastZone = -1, quality = 0, lowCnt = 0;
+    const _txt = new WeakMap();
+    const setText = (el, v) => { if (_txt.get(el) !== v) { _txt.set(el, v); el.textContent = v; } };
     function respawnPlayer() {
       const cp = CHECK[Math.min(zoneIdx(maxAlt), CHECK.length - 2)];
       const b = player.body;
@@ -4706,6 +4903,7 @@ body.menu #mpCount { opacity: 1; }
 
       sky.position.copy(camera.position);
       clouds.rotation.y = t * 0.003;
+      skyMat.uniforms.time.value = t;
       if (typeof envFX !== "undefined") envFX.update(dt, t);
       if (mode === "play") debugTick(player, physics, t);
       if (window.MP) window.MP.tick(dt, mode);
@@ -4729,16 +4927,16 @@ body.menu #mpCount { opacity: 1; }
           }
         }
       }
-      stateEl.textContent = slow ? 'SLOW-MO' : player.state;
+      setText(stateEl, slow ? 'SLOW-MO' : player.state);
       const alt = Math.max(0, player.body.y);
       if (alt > maxAlt) maxAlt = alt;
-      altEl.textContent = Math.round(alt) + ' m';
+      setText(altEl, Math.round(alt) + ' m');
       applyAtmo(player.body.y);
       if (++lodTick % 10 === 0) { worldLOD(player.body.x, player.body.y, player.body.z); if (window.__propLOD) window.__propLOD(player.body.x, player.body.y, player.body.z); }
       flightEl.classList.toggle('show', !!player.flying);
       const zi = zoneIdx(player.body.y);
       if (zi !== lastZone) { lastZone = zi; zoneEl.textContent = (zi + 1) + '/10 · ' + ZONES[zi].n; }
-      bestEl.textContent = 'BEST ' + Math.round(maxAlt) + ' m';
+      setText(bestEl, 'BEST ' + Math.round(maxAlt) + ' m');
 
       const nearLedge = player.climbState === 'none' && !player.body.grounded &&
         physics.findLedge(player.body.x, player.body.y, player.body.z, player.heading, 1.4, 0.45, 2.5);
@@ -4764,5 +4962,43 @@ body.menu #mpCount { opacity: 1; }
   }
 })();
   </script>
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
 </body>
 </html>
